@@ -1,0 +1,288 @@
+@using System.Security.Claims
+@model BlogApp.Entity.Post
+
+@{
+    ViewData["Title"] = Model.Title;
+    ViewData["Description"] = Model.Description;
+    if (!string.IsNullOrEmpty(Model.Image))
+    {
+        ViewData["OgImage"] = $"/img/{Model.Image}";
+    }
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            @if (Model != null)
+            {
+                <article class="blog-post">
+                    <h1 class="blog-post-title">@Model.Title</h1>
+                    
+                    <div class="blog-post-meta mb-3">
+                        <span class="text-muted">
+                            <i class="bi bi-calendar"></i>
+                            @Model.PublishedOn?.ToLocalTime().ToString("dd MMMM yyyy")
+                        </span>
+                        <span class="text-muted ms-3">
+                            <i class="bi bi-person"></i>
+                            @Model.User.UserName
+                        </span>
+                        <div class="float-end">
+                            @if (User.Identity?.IsAuthenticated == true)
+                            {
+                                <div class="btn-group reaction-buttons" data-post-id="@Model.PostId">
+                                    <button class="btn btn-sm btn-outline-success like-button @(Model.Reactions.Any(r => r.UserId == int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0") && r.IsLike) ? "active" : "")">
+                                        <i class="bi bi-hand-thumbs-up"></i>
+                                        <span class="likes-count">@Model.Reactions.Count(r => r.IsLike)</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger dislike-button @(Model.Reactions.Any(r => r.UserId == int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0") && !r.IsLike) ? "active" : "")">
+                                        <i class="bi bi-hand-thumbs-down"></i>
+                                        <span class="dislikes-count">@Model.Reactions.Count(r => !r.IsLike)</span>
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-success" disabled>
+                                        <i class="bi bi-hand-thumbs-up"></i>
+                                        <span>@Model.Reactions.Count(r => r.IsLike)</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" disabled>
+                                        <i class="bi bi-hand-thumbs-down"></i>
+                                        <span>@Model.Reactions.Count(r => !r.IsLike)</span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Image))
+                    {
+                        <img src="/img/@Model.Image" class="img-fluid rounded mb-3" alt="@Model.Title">
+                    }
+
+                    <div class="blog-post-content mb-3">
+                        @Html.Raw(Model.Content)
+                    </div>
+
+                    <div class="blog-post-tags mb-3">
+                        @foreach (var tag in Model.Tags)
+                        {
+                            <a asp-controller="Posts" asp-action="Index" asp-route-tag="@tag.Url"
+                               class="badge bg-@tag.Color?.ToString().ToLower() text-decoration-none">
+                                @tag.Name
+                            </a>
+                        }
+                    </div>
+
+                    <div class="post-share mb-4">
+                        <h5 class="mb-3">Bu Yazıyı Paylaş</h5>
+                        <div class="d-flex gap-2">
+                            <a href="https://twitter.com/intent/tweet?url=@(Context.Request.Scheme)://@(Context.Request.Host)/posts/@(Model.Url)&text=@(Model.Title)" 
+                               target="_blank" 
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-twitter me-2"></i>Twitter
+                            </a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=@(Context.Request.Scheme)://@(Context.Request.Host)/posts/@(Model.Url)" 
+                               target="_blank" 
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-facebook me-2"></i>Facebook
+                            </a>
+                            <a href="https://www.linkedin.com/shareArticle?mini=true&url=@(Context.Request.Scheme)://@(Context.Request.Host)/posts/@(Model.Url)&title=@(Model.Title)" 
+                               target="_blank" 
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-linkedin me-2"></i>LinkedIn
+                            </a>
+                            <button onclick="copyToClipboard('@(Context.Request.Scheme)://@(Context.Request.Host)/posts/@(Model.Url)')" 
+                                    class="btn btn-outline-secondary">
+                                <i class="bi bi-link-45deg me-2"></i>Bağlantıyı Kopyala
+                            </button>
+                        </div>
+                    </div>
+                </article>
+
+                <hr />
+
+                <div class="comments-section">
+                    <h3>Yorumlar (<span id="comment-count">@Model.Comments.Count</span>)</h3>
+                    
+                    <div id="comments-list">
+                        @if (Model.Comments.Any())
+                        {
+                            foreach (var comment in Model.Comments.OrderByDescending(c => c.PublishedOn))
+                            {
+                                <div class="comment mb-3">
+                                    <div class="d-flex">
+                                        <img src="/img/@comment.User.Image" class="rounded-circle me-2" alt="@comment.User.UserName" style="width: 40px; height: 40px; object-fit: cover;">
+                                        <div>
+                                            <h6 class="mb-0">@comment.User.UserName</h6>
+                                            <small class="text-muted">@comment.PublishedOn?.ToString("dd.MM.yyyy HH:mm")</small>
+                                            <p class="mb-0">@comment.Content</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="alert alert-info">
+                                Henüz yorum yapılmamış. İlk yorumu siz yapın!
+                            </div>
+                        }
+                    </div>
+
+                    @if (User.Identity?.IsAuthenticated ?? false)
+                    {
+                        <div class="comment-form mb-4">
+                            <h4 class="mb-3">Yorum Ekle</h4>
+                            <form id="commentForm" onsubmit="return submitComment(event)">
+                                <input type="hidden" name="postId" value="@Model.PostId" />
+                                <div class="mb-3">
+                                    <textarea name="content" id="commentText" class="form-control" rows="3" required></textarea>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary" id="submitComment">
+                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                        <span class="button-text">Yorum Yap</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info mt-4">
+                            <i class="bi bi-info-circle me-2"></i> Yorum yapmak için <a asp-controller="Users" asp-action="Login" class="alert-link">giriş yapın</a>.
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-danger">
+                    Blog yazısı bulunamadı.
+                </div>
+            }
+        </div>
+        <div class="col-md-4">
+            @await Component.InvokeAsync("TagsMenu")
+            @await Component.InvokeAsync("NewPosts")
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        async function submitComment(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const button = form.querySelector('button[type="submit"]');
+            const spinner = button.querySelector('.spinner-border');
+            const buttonText = button.querySelector('.button-text');
+            
+            // Disable button and show spinner
+            button.disabled = true;
+            spinner.classList.remove('d-none');
+            buttonText.textContent = 'Gönderiliyor...';
+
+            try {
+                const response = await fetch('/Posts/AddComment', {
+                    method: 'POST',
+                    body: new FormData(form),
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Add comment to the list
+                    const commentsList = document.getElementById('comments-list');
+                    const commentHtml = `
+                        <div class="comment mb-3">
+                            <div class="d-flex">
+                                <img src="/img/${result.comment.userImage}" class="rounded-circle me-2" alt="${result.comment.userName}" style="width: 40px; height: 40px; object-fit: cover;">
+                                <div>
+                                    <h6 class="mb-0">${result.comment.userName}</h6>
+                                    <small class="text-muted">${result.comment.publishedOn}</small>
+                                    <p class="mb-0">${result.comment.content}</p>
+                                </div>
+                            </div>
+                        </div>`;
+                    commentsList.insertAdjacentHTML('afterbegin', commentHtml);
+                    
+                    // Clear form
+                    form.reset();
+                    
+                    // Show success message
+                    showToast('success', 'Yorumunuz başarıyla eklendi.');
+                    
+                    // Update comment count
+                    const countElement = document.getElementById('comment-count');
+                    const currentCount = parseInt(countElement.textContent);
+                    countElement.textContent = currentCount + 1;
+                } else {
+                    showToast('error', result.message);
+                }
+            } catch (error) {
+                showToast('error', 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+            } finally {
+                // Re-enable button and hide spinner
+                button.disabled = false;
+                spinner.classList.add('d-none');
+                buttonText.textContent = 'Yorum Yap';
+            }
+
+            return false;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('success', 'Bağlantı kopyalandı!');
+            }).catch(() => {
+                showToast('error', 'Bağlantı kopyalanamadı.');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const reactionButtons = document.querySelectorAll('.reaction-buttons');
+            
+            reactionButtons.forEach(container => {
+                const postId = container.dataset.postId;
+                const likeBtn = container.querySelector('.like-button');
+                const dislikeBtn = container.querySelector('.dislike-button');
+                
+                likeBtn.addEventListener('click', () => handleReaction(postId, true));
+                dislikeBtn.addEventListener('click', () => handleReaction(postId, false));
+            });
+            
+            async function handleReaction(postId, isLike) {
+                try {
+                    const response = await fetch('/Posts/React', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        },
+                        body: JSON.stringify({ postId, isLike })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const container = document.querySelector(`[data-post-id="${postId}"]`);
+                        const likeBtn = container.querySelector('.like-button');
+                        const dislikeBtn = container.querySelector('.dislike-button');
+                        
+                        likeBtn.querySelector('.likes-count').textContent = data.likes;
+                        dislikeBtn.querySelector('.dislikes-count').textContent = data.dislikes;
+                        
+                        likeBtn.classList.toggle('active', data.userReaction === true);
+                        dislikeBtn.classList.toggle('active', data.userReaction === false);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+        });
+    </script>
+} 

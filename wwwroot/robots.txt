@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /posts/
+Allow: /tags/
+Disallow: /users/login
+Disallow: /users/register
+Disallow: /users/profile
+Disallow: /admin/
+
+Sitemap: https://yourdomain.com/sitemap.xml 

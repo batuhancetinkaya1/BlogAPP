@@ -1,0 +1,51 @@
+@model IEnumerable<BlogApp.Entity.Post>
+
+@{
+    ViewData["Title"] = "Ana Sayfa";
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            @foreach (var post in Model)
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h2 class="card-title h4 mb-0">
+                                <a href="/posts/@post.Url" class="text-decoration-none">@post.Title</a>
+                            </h2>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(post.Description))
+                        {
+                            <p class="card-text">@post.Description</p>
+                        }
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted small">
+                                <i class="bi bi-person me-1"></i>@post.User.UserName
+                                <span class="mx-2">•</span>
+                                <i class="bi bi-calendar me-1"></i>
+                                <span>@post.PublishedOn?.ToString("dd.MM.yyyy HH:mm")</span>
+                                <span class="mx-2">•</span>
+                                <i class="bi bi-chat me-1"></i>@post.Comments.Count yorum
+                            </div>
+
+                            <div>
+                                @foreach (var tag in post.Tags)
+                                {
+                                    <a href="/posts/tag/@tag.Url" class="badge bg-@tag.Color?.ToString().ToLower() text-decoration-none me-1">@tag.Name</a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="col-md-4">
+            @await Component.InvokeAsync("TagsMenu")
+            @await Component.InvokeAsync("NewPosts")
+        </div>
+    </div>
+</div> 

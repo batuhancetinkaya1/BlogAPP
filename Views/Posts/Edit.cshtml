@@ -1,0 +1,120 @@
+@model BlogApp.Models.PostEditViewModel
+
+@{
+    ViewData["Title"] = "Yazı Düzenle";
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">@ViewData["Title"]</h1>
+                    <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        <input type="hidden" asp-for="PostId" />
+                        <input type="hidden" asp-for="Image" />
+
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label">Başlık</label>
+                            <input asp-for="Title" class="form-control" />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label">Açıklama</label>
+                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Content" class="form-label">İçerik</label>
+                            <textarea asp-for="Content" class="form-control" id="editor"></textarea>
+                            <span asp-validation-for="Content" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ImageFile" class="form-label">Kapak Resmi</label>
+                            <input asp-for="ImageFile" class="form-control" type="file" accept="image/*" />
+                            <span asp-validation-for="ImageFile" class="text-danger"></span>
+                            @if (!string.IsNullOrEmpty(Model.Image))
+                            {
+                                <div class="mt-2">
+                                    <img src="/img/@Model.Image" class="img-thumbnail" style="max-height: 200px;" />
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="SelectedTagIds" class="form-label">Etiketler</label>
+                            <select asp-for="SelectedTagIds" class="form-select" multiple>
+                                @foreach (var tag in Model.AvailableTags)
+                                {
+                                    <option value="@tag.TagId">@tag.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="SelectedTagIds" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Status" class="form-label">Durum</label>
+                            <select asp-for="Status" class="form-select">
+                                <option value="Draft">Taslak</option>
+                                <option value="Published">Yayında</option>
+                                <option value="Scheduled">Planlandı</option>
+                                <option value="Archived">Arşivlenmiş</option>
+                            </select>
+                            <span asp-validation-for="Status" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ScheduledPublishTime" class="form-label">Planlanan Yayın Tarihi</label>
+                            <input asp-for="ScheduledPublishTime" class="form-control" type="datetime-local" />
+                            <span asp-validation-for="ScheduledPublishTime" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input asp-for="IsActive" class="form-check-input" />
+                                <label asp-for="IsActive" class="form-check-label">Aktif</label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Index" class="btn btn-secondary">Geri Dön</a>
+                            <button type="submit" class="btn btn-primary">Kaydet</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Yazı Bilgileri</h5>
+                    <dl class="row">
+                        <dt class="col-sm-4">Oluşturulma</dt>
+                        <dd class="col-sm-8">@Model.CreatedAt.ToString("dd.MM.yyyy HH:mm")</dd>
+
+                        <dt class="col-sm-4">Yayınlanma</dt>
+                        <dd class="col-sm-8">@(Model.PublishedOn?.ToString("dd.MM.yyyy HH:mm") ?? "-")</dd>
+
+                        <dt class="col-sm-4">URL</dt>
+                        <dd class="col-sm-8">@Model.Url</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.ckeditor.com/ckeditor5/27.1.0/classic/ckeditor.js"></script>
+    <script>
+        ClassicEditor
+            .create(document.querySelector('#editor'))
+            .catch(error => {
+                console.error(error);
+            });
+    </script>
+} 

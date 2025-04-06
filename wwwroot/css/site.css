@@ -1,0 +1,167 @@
+html {
+  font-size: 14px;
+  position: relative;
+  min-height: 100%;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  white-space: nowrap;
+  line-height: 60px;
+}
+
+/* Custom styles */
+.post-card {
+  height: 100%;
+  transition: transform 0.2s;
+}
+
+.post-card:hover {
+  transform: translateY(-5px);
+}
+
+.post-image {
+  height: 200px;
+  object-fit: cover;
+}
+
+.post-meta {
+  font-size: 0.9rem;
+}
+
+.tag-badge {
+  text-decoration: none !important;
+  transition: opacity 0.2s;
+}
+
+.tag-badge:hover {
+  opacity: 0.8;
+}
+
+.comment {
+  border-left: 3px solid #dee2e6;
+  margin-bottom: 1rem;
+  padding-left: 1rem;
+}
+
+.comment-meta {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.profile-image {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+}
+
+.dropdown-item i {
+  width: 1rem;
+  text-align: center;
+}
+
+/* Form styles */
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+  opacity: .65;
+  transform: scale(.85) translateY(-0.5rem) translateX(0.15rem);
+}
+
+.form-floating > label {
+  padding: 1rem 0.75rem;
+}
+
+/* Alert styles */
+.alert {
+  margin-top: 1rem;
+}
+
+/* Markdown content styles */
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-content pre {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 0.25rem;
+}
+
+.markdown-content code {
+  color: #d63384;
+  background-color: #f8f9fa;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+}
+
+/* Loading spinner */
+.spinner-border {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
+}
+
+/* Custom styles */
+.blog-post {
+  margin-bottom: 4rem;
+}
+
+.blog-post-title {
+  margin-bottom: 0.25rem;
+  font-size: 2.5rem;
+  font-weight: 300;
+}
+
+.blog-post-meta {
+  margin-bottom: 1.25rem;
+  color: #727272;
+}
+
+.blog-post-content {
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+.comment:last-child {
+  border-bottom: none;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .blog-post-title {
+    font-size: 2rem;
+  }
+  
+  .blog-post-content {
+    font-size: 1rem;
+  }
+  
+  .navbar-nav {
+    margin-top: 1rem;
+  }
+  
+  .navbar-nav .nav-item {
+    margin-bottom: 0.5rem;
+  }
+  
+  form.d-flex {
+    margin: 1rem 0;
+  }
+} 

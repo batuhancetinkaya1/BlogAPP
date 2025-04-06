@@ -1,0 +1,63 @@
+@model BlogApp.Models.ProfileViewModel
+
+@{
+    ViewData["Title"] = "Profil";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    @if (!string.IsNullOrEmpty(Model.Image))
+                    {
+                        <img src="/img/@Model.Image" class="rounded-circle profile-image mb-3" alt="@Model.UserName">
+                    }
+                    else
+                    {
+                        <i class="bi bi-person-circle" style="font-size: 5rem;"></i>
+                    }
+                    <h2 class="card-title">@ViewData["Title"]</h2>
+                </div>
+
+                <form asp-action="Profile" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    
+                    <div class="form-floating mb-3">
+                        <input asp-for="UserName" class="form-control" placeholder="Kullanıcı Adı" />
+                        <label asp-for="UserName">Kullanıcı Adı</label>
+                        <span asp-validation-for="UserName" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="form-floating mb-3">
+                        <input asp-for="Email" class="form-control" placeholder="Email" readonly />
+                        <label asp-for="Email">Email</label>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label asp-for="ImageFile" class="form-label">Profil Fotoğrafı</label>
+                        <input asp-for="ImageFile" class="form-control" accept="image/*" />
+                        <span asp-validation-for="ImageFile" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="form-floating mb-3">
+                        <input asp-for="NewPassword" type="password" class="form-control" placeholder="Yeni Şifre" />
+                        <label asp-for="NewPassword">Yeni Şifre</label>
+                        <span asp-validation-for="NewPassword" class="text-danger"></span>
+                        <div class="form-text">Şifrenizi değiştirmek istemiyorsanız boş bırakın.</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-2"></i>Değişiklikleri Kaydet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+} 

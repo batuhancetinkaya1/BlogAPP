@@ -1,0 +1,44 @@
+@model BlogApp.Entity.Tag
+
+@{
+    ViewData["Title"] = "Etiket Düzenle";
+}
+
+<div class="container">
+    <h2>@ViewData["Title"]</h2>
+    <hr />
+    <div class="row">
+        <div class="col-md-6">
+            <form asp-action="Edit">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <input type="hidden" asp-for="TagId" />
+                <div class="form-group mb-3">
+                    <label asp-for="Name" class="control-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="form-group mb-3">
+                    <label asp-for="Url" class="control-label"></label>
+                    <input asp-for="Url" class="form-control" />
+                    <span asp-validation-for="Url" class="text-danger"></span>
+                    <small class="form-text text-muted">Boş bırakırsanız etiket adından otomatik oluşturulacaktır.</small>
+                </div>
+                <div class="form-group mb-3">
+                    <label asp-for="Color" class="control-label"></label>
+                    <select asp-for="Color" class="form-select" asp-items="Html.GetEnumSelectList<BlogApp.Entity.TagColors>()">
+                        <option value="">-- Renk Seçin --</option>
+                    </select>
+                    <span asp-validation-for="Color" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                    <a asp-action="Index" class="btn btn-secondary">Geri Dön</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+} 

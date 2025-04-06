@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - BlogApp</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="@ViewData["Description"] ?? "BlogApp - Teknoloji, programlama ve web geliştirme üzerine blog yazıları."" />
+    <meta name="keywords" content="@ViewData["Keywords"] ?? "blog, teknoloji, programlama, web geliştirme, yazılım"" />
+    <meta name="author" content="BlogApp" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- OpenGraph Meta Tags -->
+    <meta property="og:title" content="@ViewData["Title"] - BlogApp" />
+    <meta property="og:description" content="@ViewData["Description"] ?? "BlogApp - Teknoloji, programlama ve web geliştirme üzerine blog yazıları."" />
+    <meta property="og:image" content="@ViewData["OgImage"] ?? "/img/default-og.jpg"" />
+    <meta property="og:url" content="@Context.Request.Scheme://@Context.Request.Host@Context.Request.Path" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@ViewData["Title"] - BlogApp" />
+    <meta name="twitter:description" content="@ViewData["Description"] ?? "BlogApp - Teknoloji, programlama ve web geliştirme üzerine blog yazıları."" />
+    <meta name="twitter:image" content="@ViewData["OgImage"] ?? "/img/default-og.jpg"" />
+    
+    <link rel="canonical" href="@Context.Request.Scheme://@Context.Request.Host@Context.Request.Path" />
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/BlogApp.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdn.tiny.cloud/1/qagffr3pkuv17a8on1afax661irst1hbr4e6tbv888sz91jc/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    <script>
+        tinymce.init({
+            selector: 'textarea#Content',
+            plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+            height: 500
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-dark bg-primary border-bottom box-shadow mb-3">
+            <div class="container">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">BlogApp</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Ana Sayfa</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Posts" asp-action="List"><i class="bi bi-journal-text"></i> Blog Yazıları</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Tags" asp-action="Index"><i class="bi bi-tags"></i> Etiketler</a>
+                        </li>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Admin" asp-action="Index"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                            </li>
+                        }
+                    </ul>
+                    <form class="d-flex me-3" asp-controller="Posts" asp-action="Search" method="get">
+                        <input class="form-control me-2" type="search" name="query" placeholder="Blog yazılarında ara..." value="@ViewBag.SearchQuery">
+                        <button class="btn btn-light" type="submit">Ara</button>
+                    </form>
+                    <ul class="navbar-nav">
+                        @if (User.Identity?.IsAuthenticated ?? false)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                    @if (!string.IsNullOrEmpty(User.FindFirst("Image")?.Value))
+                                    {
+                                        <img src="/img/@User.FindFirst("Image")?.Value" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover;" alt="@User.Identity.Name">
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle me-1"></i>
+                                    }
+                                    @User.Identity.Name
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" asp-controller="Users" asp-action="Profile"><i class="bi bi-person me-2"></i>Profilim</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Posts" asp-action="Create"><i class="bi bi-plus-circle me-2"></i>Yeni Yazı</a></li>
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Tags" asp-action="Create"><i class="bi bi-tag me-2"></i>Yeni Etiket</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                    }
+                                    <li><a class="dropdown-item text-danger" asp-controller="Users" asp-action="Logout"><i class="bi bi-box-arrow-right me-2"></i>Çıkış Yap</a></li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Users" asp-action="Login">Giriş Yap</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Users" asp-action="Register">Kayıt Ol</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body"></div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+            <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body"></div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
+        @if (TempData["success"] != null)
+        {
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    showToast('success', '@TempData["success"]');
+                });
+            </script>
+        }
+
+        @if (TempData["error"] != null)
+        {
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    showToast('error', '@TempData["error"]');
+                });
+            </script>
+        }
+
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; @DateTime.Now.Year - BlogApp - <a asp-controller="Home" asp-action="Privacy">Gizlilik</a>
+        </div>
+    </footer>
+
+    <button id="scrollToTop" class="btn btn-primary rounded-circle position-fixed bottom-0 end-0 m-4 d-none">
+        <i class="bi bi-arrow-up"></i>
+    </button>
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+        function showToast(type, message) {
+            const toast = document.getElementById(type + 'Toast');
+            toast.querySelector('.toast-body').textContent = message;
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+
+        const scrollToTopBtn = document.getElementById('scrollToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.classList.remove('d-none');
+            } else {
+                scrollToTopBtn.classList.add('d-none');
+            }
+        });
+
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    </script>
+</body>
+</html> 
+</html> 

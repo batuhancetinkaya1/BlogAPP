@@ -1,0 +1,585 @@
+dotnet new web -o BlogApp -f net7.0  // -f li kısım yoksa sistemdeki sürümle oluyor 7 yerine 7 üzeri olan 8 ve 9 da kullanılabilir terminalden proje açma kodu bu -o dosya oluşturmak için.
+
+dotnet watch run // projeyi ayağa kaldırmak için
+
+.net, c#, c# dev kit, c# extensiıns, auto renamge tag backet pair color dlw
+
+bu adımdan sonra sıradaki adım model hazırlığı:
+
+entity oluşturma. 
+Post.cs: namespace BlogApp.Entity;
+public class Post{ public int Post Id {get; set;} public string? Title {get; set;} public string? Content {get;set;} public DateTime PublishedOn {get;set;} public bool IsActive {get;set;} public int UserId {get;set;} public User User {get;set;} = null!; public List<Tag>Tags {get; set;}= new List<Tag>(); public List<Comment> Comments {get;set;} 
+
+Tag.cs: namespace BlogApp.Entity; public class Tag{public int TagId public List<Post> Posts {get;set;} = new List<Tag>();
+
+Comment.cs namespace BlogApp.Entity public class Comment{ public int Comment Id {get;set;} public string? Text {get;set;} public DateTime PublishedOn {get;set;} public int PostId {get;set} public Post Post {get;set;} = null!; public int UserId {get;set;} public User User {get;set;} = null!
+
+User.cs namespace BlogApp.Entity; public class User{ public int UserId {get;set;} public string? UserName {get;set;} public List<Post> Posts {get;set;} = new List<Post>(); public List<Comment> Comments {get;set;} = new List<Comment>();
+
+şimdi Data klasörü oluşturuyoruz ve içine iki klasör daha "abstract", "concrete"
+concrete içerisine EfCore klasörü db context bunun içerisine oluşturulacak.
+EfCore içerisine: 
+BlogContext.cs: namespace BlogApp.Data.Concrete.EfCore //EfCore dotnet add package Micrososqlite 9.0.3 { public class BlogContex:DbContext public BlogContext{DbContextOptions<BlogContext> options):base(options){} // options parametresini alıp bu parametre veriyapılarının tabanını inceliyor DbContext base ine gönderiliyor. public class BlogContext:DbContext{ public DbSet<Post> Posts => set<Post>(); public DbSet<Tag> Tags => set<Post>(); public DbSet<Comment> Comments => set<Post>(); public DbSet<User> Users => set<User>();
+
+kçük proje sqlite büyük projede mssql çoklu kullanıcı mssql sqllite da kodu yazınca veritabbanı otomatik oluşyuo mssqlde veritabanı oluşturuluyor sonra kod yazılıyor.
+
+appsettings.json projeyi canlıya almak için, appsettings.Developments.json deneme için
+
+
+appsetting.Development.json içerisinde: "ConnectionStrings":{ "sql_connection": "Data Source=blog.db" 
+
+program.cs: builder.Services.AddDbContext<BlogContext> (vat config = builder.configuration; var connectionString = config.getconnectionSting("sql_connection"); options=>{ options.UseSqlite();});
+
+-----
+migration
+dotnet tool list -g //dotnet tolları -g general sanırım
+dotnet tool install --global dotnet -ef 
+dotnet tool update --global dotnet -ef
+
+dotnet ef de hoca hata aldı belirtilen komut veya dosya bulunamadığından yürütülemedi dedi terminalde normalde at kafası ve ef yazısının çıkması lazımmış şu anda terminalden deniyor
+buraya kadar olan kısımda bir kça küçük adımı gözden kaçırdım onların neler olduğunu bilmem ve düzeltmem gerekiyor
+
+dotnet tool update --global dotnet-ef yapıp denedi olmadı
+where dotnet-ef denedi dönüş almadı terminalde
+%USERPROFILE%\.dotnet\tools da hata verdi
+
+ortam değişkenlerine girdi şimdi oradan C:\Users\Kaya3\dotnet\tools pathini sistem değişkenleri ve kaya3.... kısmına girdi visual studio codeu yeniden açıp çalıştırdı ve şimdi çalıştı
+
+tools path olarak eklenmemmiş halletti.
+
+dotnet ef migrations addInitialCreate "enterladı"
+BlogApp.DataConcrete.EfCore.BlogContext runtime hatası varı buildden önce connectionstringmi ne vedi düzeltti
+
+migration içinde otomatik oluşturdu.sqlite otomatik olduğundan büyük avantaj
+
+eğer mssql kullansaydık "sql_connection": server= localhost....."
+
+Veri tabanı çıkarmak için de => dotnet ef database update //termianlde
+
+blog.db veritabanı oluştu
+sqllite indirmenize gerek yok ama görün diye açıyorum diyor. veritabanını sqlite üzerinden gösteriyor
+
+BlogApp.csproj içerisinde bazı değişiklikler var ama bunlar termianldeki komutlardan dolayı otomatik olmuş olabilir
+
+sıradaki adım projenin içerisine girmek => seatdata kullanacakmış seatdata ne? doğru mu yazdım? seeddata mı acaba  denemeler yapıcaz örnek bloglar falan olcak bunları her seferinde tekrar oluşturmak yerine testler için seeedatayı kullanacakmışız veritabanı 0sa diyeymiş dummy mi acaba 
+
+SeedData.cs: namespace BlogApp.Data.Concrete.EfCore{public static class SeedData{//static olarak tanımlanan şeyden bir ınstance oluşturulamaz içerisindeki her şey static olur doğrudan sınıf adıyla erişmek için kulllanılır.  public statice void TestVerileriniDoldur(IApplicationBuilde.app){ var context = app.ApplicationServices.CreateScope().ServiceProvider.GetServicer<BlogContext>(); if(context != null){context.Database.Migrate();}if(!context.Tags.Any(){context.Tags.AddRange(new Entity.Tag{Text = "WEB PROGRAMLAMA"),new Entity.Tag{Text = "bakcend"),new Entity.Tag{Text = "frontcend"),new Entity.Tag{Text = "game"),new Entity.Tag{Text = "fullstack"),}vcontext.SaveChanges();}
+if(!context.Users.Any(){context.Users.AddRange(new User{UserName = "ahmetkaya"},contet.SaveChagnes();
+if(!context.Posts.Any()){ context.Posts.AddRange(new Post{ Title = ,content = ,IsActive = true , publishedOn =DateTime.Now.AddDays(210), Tags, UserId=1;
+new post ile 3 tane farklı yukarıdakinden post oluşturdu böyle
+
+context.SaveChanges();
+
+Program.cs: SeedData.TestVerileriniDoldur(app) //buradaki app nedir bilmiyorum
+
+termanilde: dotnet ef database drop --force //veri tabanı temizleme
+dotnet watch run //proje ayağa kalktı
+bu işlemlerden sonra //bir adım kaçırmadıysam sqlite içerisinde dummylerin oluştuğunu gördük. seeddata içerisine yeni bir şey eklenince veritbanı silinip tekrardan oluştırulmalı ki yeni eklemeleri görebilelim. 
+
+proje github üzerinde de olacak oradan çekip bakabileceğiz
+
+----------------------------ARA
+
+Program.cs içerisinde options.UseSqlite(bilder.Configuration["ConnectionString:sql_connection"]);  //bu neden yapıldı anlamadım
+
+yapımızı mvc ye çeviricez mvc nedir? model version controller? model- veri tabanı v- client control-?
+
+builder.Services.AddControllerWithViews();
+
+app.MapDefaultControllerRoute();//route controller kullanıcı yönelndirme ?-tamanalamddım-
+views ve controllers klasörleri oluşturuldu. controllers içerisine PostController.cs oluşturudldu view içerisine de Posts klasörü oluşturuldu index.cshtml oluşturuldu.
+
+Postcontroller.cs: namespace BlogApp.Controller{public claass PostsController :Controller{ public IActionResult Index(){return View();}
+
+index.cshtml içerisinde: Post List dedik<body> içine
+
+dotnet watch run çalıştırıldı tekrar burda bir bilgi verdi kaçırdım sonra da hata aldı -532462766 hatası 
+
+Post.cs içerisinde public string? Image(get;set;} oluşturdu
+user.cs: public string? Image[get;set;}
+
+veri tabanını siliyor dotnet ef daatabase drop --force
+migrationı da silicem hatta diyor
+
+dotnet ef migrations add InitialCreate
+dotnet watch run yaptı 
+
+aynı hatayı yeniden aldı.
+
+seeddata.cs içerisinde if(context.Database.GetPendingMigrations().Any()){context.Database.Migrate(); ekledi bir yerine  if(context 1= null) içine yapmış bunu
+
+
+tekrar çalıştırdı bu hatayo düzeltti belki de hata kodu aynı ama yenş bir hataya geçti sanırım
+
+
+seedata içerisinde new Tag{text =  ile bir tanımlama yamıştı orada isim çakışması var mı diye bakıldı sorun yok
+program.cs seeddata.testverileriDoldur(app); da bir hata var sanırım oraya bakıyor. 
+
+tag tablosuna ulaşamıyor diyor ve onu incelemye çalışıyor blog.db yi açtı tag tablosunun olduğunu kontrol etti.
+veritabanını sildi
+şimdi tekrar yükledi çalışıyor diyor sanırım veritabanını silip kurmamış bi,r yerde
+artık postlar hazır postları çekecem diyor
+tm verileri blogcontext içerisinde oradan çekecem diyor
+
+postcontroller.cs içerisinde private readonly BlogConteext -context; public PostContoller(BlogContext context){-context = context;} buradaki constructorın amacı = ? public IActionResult index(){ return View(_context.Posts.ToList()); //bu güvebilir değil bu nedenle conrete e alca zilerde neden güvenilir değil çünkü her şeye erişiyor sıkıntı
+
+index.cshtml içinde @model List<Post>@using BlogApp.Entity 
+
+Views içine _ViewImports.cshtml dosyası açıyırouz genel olarak birden fazlaa yerde kullanılacaksa kullanıyoruz ama tam nedne anlayamadım ama bunun sayesinde her sayfada using tanımlamanda sorunsuz bir şekilde çekebiliyor muşuz
+birden fazlaa postu çekmek için foreach dönügüsü kullanacak ama bunu da index.cshtml içinde yazıor @foreach(var post in Model){<p>@post.Title<\p>
+sonra projeyi watch run ile çalıştırıp localhostxxx\posts a gitti orada postları gördü.
+
+repository design yapıyormuşuz ama ben bunları çok bilmşyorum
+abstract içerisine IPostRepository.cs oluşturdu verilerin hepsine değil postlara eriş hatta sadecee görüntüleme yapabil diyecekmiş
+IPostRepository.cs namespace BlogApp.Data.Abstract{
+public interface IPostRepository{Iqueryable<Post> Posts{get;}
+void CreatePost(Post post);
+
+bnları yazıp termianlde bir şey çalıştırdı anlamadım
+
+Concrete içerisinde EfPostRepository.cs oluşturdu: namespace BlogApp.Data.Concrete{public classEfPostRepository : IPostRepository{ //hata vardı implementleri yokmuş bu nedenle implement interface seçti visual code da 
+private BlogContext -context;
+public EfPostRepository(BlogContext context){_context = context;
+
+public void CreatePost(Post post){ _context.Posts.Add(post); -context.SaveChanges() //veritabanaı işlemlerinde yapılmalıymış.
+
+blogcontexti sildi Postcontroller.cs içinde ilginç anlamadım
+
+Program.cs içerisinde: builder.Services.AddScoped<IpostRepository, EfPostRepository>();
+
+Postcontroller.c: private IPostRepository _repository; ekledi ve diğer şeyleri de buna göre güncellerid bu dosyada 
+sonra terminalde bi yes dedi bir şeye ve güncelledi bu termianl kısmını kaçırıyorum 
+
+front kısmı bizi yorar diyor o nednele şablonları güzel kullanmalıymışız. views klasörü içinde Shared kklasörü olmalıymış. onun içine de Layout.cshtml oluşturdu
+Layout.cshtml: @RengerBody() header ve footer değişimiyormuş orta kısım değişiyormuş bir sitede ve renderbody bu ortakısma denk geliyormuş.
+
+Views içine -ViewStart.cshtml kalsörü oluşturdu: @{ Layout = "_Layout";
+
+ben buraya kadarki kısımları daha önce hiç yapmadım o nedenle takip etmesi güç hale geldi
+
+Views\Posts\index.cshtml içinde @model List<Post> @forech(var post in Model){ <p>@post.Title</p> 
+
+bootstrap kullanacakmışız mvc şablonlarında direkt kullanılabilirmiş web şablonlarında  hazır gelmiyormuş o endenele indirecekmişiz
+dotnet tool list -g ile baktı bir kütüphane indirmeliymişiz libman diye
+
+dotnet tool install microsoft.web .. .. . . .libman dedi indirdi tam kodu alamadım
+
+libman init -p cdnjs /çalıştırdı bootstrap sürümünü kopayaladı 
+libman install bootsrap@5.3.1 -d wwwroot/lib/bootstrap
+
+bi dosya oluşturup bu kodu çalıştırdı
+
+bootstrap içinde css js scss oluşturuldu otomatik
+wwwroot ne klasörü oluyor ? benim cevabım frontend klasörü olması aama bakalım cevaba: wwwroot olmasının sebebi static dosyalar olmasıymış dotnet static files diye bir arama yaptı burada wwwroot -> css js lib 
+
+app.UsedStaticFiles(); ı program.cs içine ekledi 
+
+-Layout.cshtml: <link rel="stylesheet" href="/lib/bootstrap/css/bootstrap.min.css"> //bootstrapi projeye dahil etmişiz şimdi bir denee yapacak dotnetwatch run çalıştırdı
+
+localhost 5278/posts içine girdi ve yaz tipinin değiştiğini gördü 
+
+şimdi bootstrap ile arayüz oluşturacak bunun için bir kaç resim indirecekmiş
+
+SeedData.cs: Image=1.jpg", Image=2.jpg",Image=3.jpg", bunları her posta ekledi 
+
+sonra veritabanını sildi ve yeniden oluşturdu ha bu arada wwwroot içinde img klasöründe resimleri ekledi
+
+Shared içinde -Layout.cshtmll içinde: <nav class="navbar navbar-expand-lg bg-white shadow-sm"> <div class"container"> <a href="/" gibi bir şeyler ekledi
+
+sonra icon eklemek istedi ama ikon seti eklemilydi önce o nedenle
+libman install bootstrap-icons@1.11 -d wwwroot/lib/bootstrap-icons kodunu çalıştırdı
+
+-layout.cshtml içinde <link rel="stylesheet" href="/lib/bootstrap/css/booystrap.min.css"
+-layout.cshtml içinde <link rel="stylesheet" href="/lib/bootstrap " icon -burayı kaçırdım ama <>BlogApp yazdırdı sitenin headrına-
+
+css içinde style.css de renk tonu ayarlıyor
+
+sonra bunu da div.container yazıp layoutta container içine almış mt-3 diye bi şey yazıp ayarlama yaptı 
+
+Views/Posts/index.cshtml: @model List<Post> <div class=1row1> div class col -lg-8
+h1 class= h4 mb-4 popular posts 
+
+buraları kaçırıyorum yazarken ancak frontendi ayarlıyor sanırım ve 8 e altılık bir alan oluşturup işte 4 lük col a image yapıştırdı img-fluid  rounded dedi bu kısımlara bakılmalı
+
+<hr class="my-3">
+
+
+<nv> <ul claass pagination <li classs pageitem< herf ="#"" yapıp sayfa geçişleri ayarladı ve bunu vereceği ödevde kullanırsak çok iyi olur dedi ayrıca balıkların altındak çizgi kaldırmak için tyle da a{ diyip style noen impotant gibi bir şey yazdı
+
+
+8 e 4 lük yapmış yapıyı 8lik postları gösterme kısmını bitiridç şimdi sağda 4 lük kısımda katgoriler ve son paylaşılan postlar yaapcak
+
+IpostRepositoryi kopyalayıp ITagrepositorye çeviridi Postları tag olarak çeviridi ve yeni bir .cs elde etmiş oldu
+
+Concretede de aynısını yaparak yeni bir .cs elde etti böylece taglara göre bakmayı elde etti sanrıım.
+
+program.cs içinde builder.Service. tagrepository kapsamı verdi  postcontrollerda kullanmak için
+
+postcontroller.cs içinde private IPostRepository -postRrepository  bi şeyler yaptı
+
+models klasörü oluşturdu içine postviewmodel.cs oluşturdu
+
+namespace BlogApp.Models{ class PostviewModel{ public 
+
+index.cshtmş içinde PostviewModel olarak değiştirdi @modeli ve viewimporta import ekledi 
+
+PostController.cs içinde IActionResult Index(){return View( new PostViewModel{ Posts = _postrepository.Posts.ToList()
+Tags = _
+
+index.cshtml içinde di class card div class card-header"> h5 class card title Tags h5 @foreach var tag in Model.Tags ile model içindeki tagleri listeliyormuş
+
+ul.list-inline.d-flex flex-wrap gap 2">
+foreach(var tag in model.Tags{<li class= list-inline-item>
+<a href="" classbtn btn-outline-secondary btn-sm>@tag.Text
+
+falan yazdı sonra çalıştırdı ve itenin sağ kısmına tagleri eklemiş oldu taglerin üzerine gelince siya oluyo falan havalı
+
+
+ViewComponents oluşturduve içine TagsMenu.cs oluşturdu
+içinde: TagMenu constructır yaptı 
+public class TagMenu: ViewComponent{private ItagRepository _tagRepository
+public TagMenu.(ITagRepository tagRepository){_tagRepository = tagrepository;} public IViewComponentResult
+
+default.cshtml oluşturdu içinde var tag in model yaptı bir yapı oluşturdu viewcomponent yapısını kullanmak için 
+index.cshtml içinde <div class=col-lg-4"> <vc:tags-menu></vc:tags-menu felan yaptı ve böylece tek tek tanımalamış da böyle güzel bir yoldan yapmıi
+
+
+@addTagHelper *, BlogApp yazdı usinglerin altına böyle kullanıyormuş
+
+
+yapısı hazırmış dilediği yerde kullanabilirmiş. her yere gidip tanımlaamk yerine şu vc:tags-menu ile yazdığımız şey ile her yere gidip tanımlamanın önüne geçmiş
+
+
+newPosts.cs oluşturdu burada private IPostRepository _postRepository; public NewPosts(IpostRepository postRepository){_postRepository = postRespository; ublic IviewComponentResult Invoke(){return View(_poRepository.Posts.OderByDescending(p=>p.PublishedOn.Take(5).ToLİst());
+
+shared/components/newposts/default.cshtmş içinde @model List<Post>
+
+<vc:new-posts>< // bu kod ile de taglar gibi postları da sıralamış oldu
+
+
+newposts.cs deki Task<IViewCompenetResult> metodunu async hale getiriyor
+
+burada async yapısını neden kullandığını anlattı ancak benim dikkatim dağıldı ve takip etmekte zorlanıyorum bu kısma dikkat edelim
+
+son olarak detay sayfalarını yapalım diyor ve devam ediyor
+
+PostController.cs içinde publşc async Task<IActionResult> Details(int? id) {return View(await _postRrepository.Posts.FirstOrDefaultAsyncc ....  // burada ikşi şey kafama tkaılıyor View ne metod mu class mı ve neden Rrepository neden iki 2 r
+
+details.cshtml de bir şeyler yapıyor sanırım ayarlamalar yapıyor güzelce
+
+asp nin kendi takehelpers özelleiklerini kullanacakmış detay sayfasına yönlendireccek bir kod yazmış
+
+----------------------- yarınki derste url güncelleyecek kategori halledilecek yorum yapma halledilecek giriş yapma halledilecek 
+
+yobodobo ve code challenge uygulamalarını indirmeyi tavsiye ediyor kendi uygulamalarıymış
+
+
+------------------------------2.GÜN----------------------
+blog yazılarının içeriği ve urllerin düzeltilmesiyle başlayacağız
+
+entity içerisinde post.cs ve tag.cs içinde public string? url {get;set;}
+seeddata içerisinde new Tag{Text= "web programlama", Url = "web programlama "; bunun gibi tüm taglara Url yazdı
+
+seed datada değişiklik yaptığımız için veritabanını silip baştan çalıştıracağız. çünkü veritabanını güncelledik
+
+bu nedenle migrationı da güncelleyeceğiz terminalde: dotnet ef migrations add UpdateUrlTables
+
+Program.cs içerisinde app.MapControllerRoute( name:"default", pattern: "{controller=Posts}/{action=index}/{id?} burada id dediysek çağırırken de id demeliyiz
+
+
+Post için de aynısını yapacağız dedi ve bu name defaultun üst satırında name:"post_details" pattern "posts/{url}",defaults: new {controller = "Posts", action  ="Details")
+
+PostController.cs içerisinde Details(string url) diye düzeltti
+
+//biz projeyi yaparken yazılan dosylaarı tekrar değiştirmemek için planlı ve tek seferde gitmeliyiz yani url ileride eklenecekse ona göre yazılmalıyıdı yosa sürekli geriye dönüp değişiklik yapmamız sadece eğitim için mantıklı
+
+index.cshtml içinde değişiklik yaptı gene url için
+
+new posts kısmında da url yönlendirmesi düzgün çalışıyor.
+
+Tag içinde app.MapControllerRoute( name:"posts_by_tag", pattern: "blogs/tag/{url}", defaults: new {controller = "Posts", action = "index"} // burada ufak bir hata yapmış olabilirim ama genel mantığı anlayalaım
+
+default.cshtml içerisinde uzantıya göre bir şeyler yaptı
+
+PostController.cs içerisinde public IActionResult Index(string url){ var posts = _postRrepository.Posts;
+
+if(!string.IsNullOrEmpty(tag)){posts = posts.Where(x=>.Tags.Any(t=>t.Url == tag));
+return View( new PostViewModel{Posts = _postRrepository.Posts.ToList()
+
+anasayfada listelenmiş olan yapı gelecek dedi ve bunu da async yapabiliriz dedei neden asenkron yaptığımızı unuttum ama önemli olduğunu söylüyor.
+
+birinci tıklama da yapı geliyor url yapısı heralde ama aynı şeye birdaha tıklayınca localhost hatası alıyor sayfa bulunamıyor hatası şu an onu çözmeye çalışıyor
+
+Postcontroller içerisinde direkt postu listeleyeceğiz dedi bir düzeltme yaptı 
+bu birinci düzeltme dedi bir düzeltme daha yapacak default.cshtml de </div> kapamasını yapmayaı unutmuş onu düzeltti ve sorun  da düzeldi
+
+sırada detay sayfasının içinde tagleri göstermesi lazımmış bunun için enum yapısı kullanabilirmişiz
+
+Tag.cs: public enum TagColors{primary,danger,warning,success,secondary,info}
+
+public class Tag{ public TagColors? Color {get;set;} //eklemesi yapıldı
+
+yine veritabanını silip migrationı güncelledi
+
+dotnet ef migrations add UpdateColumnTagColor
+
+seeddata.cs içerisinde TagColor eklemeye başladı urllerin yanına bir virgül atıp ekliyor 
+
+postcontroller.cs içerisinde renkleri göstermek için Include kullandı _postRrepository.Posts.Include gibi bir yapıyla Tag listesindekilerin değerlerini de alabiliyormuşuz
+
+details.cshtml: <div class="tags"> @foreach(var tag in Model.Tags){<a href = "/posts/tag/qtag.url" class="badge bg-@tagColor.text</a> //vurası da karıştı ama işte color ekledi detailsda bi şey yok
+kontrol yaptı taglerin renkleri olduğunu onayladı
+
+taglara tıklanınca hata verme sorununu da düzeltti
+
+------Yorum ekleme kısmına geçiyoruz------
+
+öncelikle resim indirdi profil resmi img içerisine ekledi bunları 
+
+seeddata içerisinde if(!context.User.Any()){ içerisinde iki kullanıcı vardı bu kullanıcıların yanına ,Image = "p1.jpg" gibi resim ekledi
+şimdi de yorum ekleyecek 
+Comments = new List<Comment>{ new Comment{Title = "Başarılı bir şekilde başladı", Publishedon =new DateTime(), UserId = 1, new Comment{Title = "Başarılı bir şekilde başlamadı", Publishedon =new DateTime(), UserId = 2} }
+
+projeyi başlattı yorumlar için de Include yapmamız gerekiyormuş  Posgtcontroller.cs içerisinde Include yaptı.
+
+details.cshtlm içerisinde commentlar için ayarlama yaptı @Model.Comments.Count() adet yorum var gibi bir şey yazdı yorum saysını gösterecek bir şey yazmış daha yorumları yansıttırmadı şimdi onu yapacak ve yorum yapma alanı ekleyecek güzel gidiyo
+
+@foreach(var comment in Model.Comments){
+img src"" class"avatar rounded-circle float-start mew-3 alt=""> gibi bir şey yaptı yorum yapanların görselini aldı
+
+comment içerisindeki userın img ını alacak şekilde bir düzeltme yaptı
+
+şu ana kadar sorun yok boyut ayarlaması yapacak pixel de kullanabilirz ram de verebiliriz dedi 
+
+style.css içinde .avatar{width: 3rem; heigth: 3rem;}
+
+
+yorum yaptırma kısmına geldik ama daha kullancıı girişi eklemediğinden dikkatli olamlıymışız işte ben bunu diyorum her şeyi bir bütün şekild egitmeliyiz tek tek değil de  bir bütünsel olarak son ürüne gitmeliyiz
+
+details.cshtml de düzenleme yaptı @comment.Text</p> gibi bir şey yapıp commentları aldı 
+
+<h4 class="mb-3">Yorum Ekle</h4>
+<form action="/posts/Addcomment" method = "posts"> 
+ <input type = "hidden" name="PostId" value= "@Model.PostId">
+ <div class="mb-3">
+   < label for="Text" class= "orm-label">Yorum</label>
+   <textarea type = "text" name="Text"" id="Text class="form-control" rows="3"
+
+
+bir de buraya buton ekledi submit butonu onu kaçırdım yani veri tabanına yoluyo
+
+PostController.cs: public IActionResult AddComment(int PostId, string UserName, string Text, string Url){var entity = new Comment{text=text, PublishedOn = DateTime.Now, PostId=PostId,User = new User{UserName = Username,Image= "p1.jpg} //bu resim şimdilikmiş
+
+şimdi yorum kaydetme işine geçecekmişiz
+kullanıcı girişi olmadığından usernameli bir yorum girşii yapıyoruz kullanıcı girşi yokmuş gibi yaptığımızdan primative mesela yorum yapmaya çalışan ama giriş yapmayan kullancıları girşi yapmaya yönelndirmeliyiz
+
+
+Details.cshtml: aynı sayfaya düşürecek bir şey yaptı yorumla ilgili
+
+comment repository var
+
+ICommentRepository
+EfCommentRepository //bunları neden yaptı bilmiyorum ama concrete de falan ekledi
+
+şimdi program.cs içinde builder.services addScope yaptı ve işi bitirmiş 
+
+PostController.cs: private ICommentRepository _commentRepository
+_commentRepository.CreateComent(entity.....)
+return RedirectToRoute("post_details", new {Url = Url});
+
+//yorum kaydedildi respawnı eklenebilir
+
+yorum eklendikten sonra yorumlar kısmının yenilenmemesi gerekiyormuş ve bu çok çok kritikmiş çünkü  bir yorum ekledik diye sayfanın en başına dönmemeliymişiz yani yorum ekleyeince sayfa yenilenmeden yorumun sayfada görünmesi gerekiyormuş
+bu oldukça kritikmiş bunun gibi şeylere dikkat etmek lazım. User experience en kritik nokta olmalıymış. ajax mı neyle javascript ile yapalirmişiz. ama ajax bilmiyosak da sorun değilmiş ama ajax ile çok rahat yapabilirmişiz. //kendi projemizde biz buna dikkat edelim sektörel ve profesyonel yapacağımız için biz ajax ile yapalım yani HER ŞEYİN BESTPRACTİCEİNE UYGUN YAPALIM.
+
+_layout.cshtmş içerisinde @RenderSection("Scripts", required 
+
+details.cshtml: @section Scripts{ cdn mi ne onu buraya ekledi gdn de olabilir}
+<script type ="text/javascript"> $(document).ready(function(){$("#btnYorumKayit").click(function(){$.ajax({type: 'POST', url: '@Url.Action/Action
+
+buraları karışık da işte ajax ile yapıyormuşuz burayı  postıd username text type url falan tüm değerleri çekiyo success: fucntion(yorum) ile yorumun successinebakıyor en son da return false ile hata önleme yaptı
+
+JsonResult döndürüyor AddComment PostController.cs içindeki method return Json(new { userName ......}}
+
+id vermeyi unutmuş heralde ommente onu da değiştirdi
+
+details.cshtml: success: fucntion(yorum){var dataType = new Date(yorum.publishedOn); $("#comments").append('...........);
+
+sanırım sadece yorum kısmını güncelleiyor  commentcountu da güncelliyor
+
+gene ajaxı övdü
+
+login işlemleri kısmına geçtik
+
+PostController.cs i kopyalayıp alıp UserController.cs adında yenibir .cs oluşturdu
+
+public IActionResult Login(){return View();} //action oluşturduktan sonra Views içine Users/Login.cshtml oluşturdu 
+
+Models/LoginViewModel.cs: [Required] [EmailAdress] [Display(Name="Eposta")]
+public string? Email {get;set;}
+
+[Required]
+[StringLength(10,ErrorMessage = "[0} ile 13 karakter arası olmalaı //buraya tam ne yazdı görmedim de kullanıcıyı bilgilendirdi
+
+Login.cshtml: from actio ="Login" method="post">
+ <div asp-validation-summary="ModelOnly" class = "text-dabger"
+<label asp-for=Email class from label 
+input asp for emaşl class
+//burada öyle bir şey tyapmışki direkt çekmiş sanrıım asp-for ile
+hatalar altta yazsın diye: span asp- validation-for=fpassword class"text-danger
+
+button class ="btn btn-primary" type "submit" Login button
+
+login sayfası tamam diyor şimdi seeddaa içerisine verileri eklemilymişiz gene veritabanını sildik
+
+data concrete seed data: userstaki dummylere email ve password ekliyor image de zaten varmış //biz burada default image ve image değiştirme yapabiliriz belki ilerde bu eğitimi aşmalıyız sonuçta tam kapsamlı bir site olmalı
+
+usercontroller.cs ded de güncelleme yaptı ve çalıştırdı gene data yı sildi migrations ayarladı önce 
+
+ve çalıştı login sayfası geldi
+
+sırada authentication - kullanıcı kimlik doğrulaaması, authorization - yetkilendirme sistemi
+
+Program.cs içinde app.UseAuthentication app.UseAuthorization eklendi
+cookie tarayıcıda tutuluyor jwt ise model üzerinde tutar veitabanı üzerinde hocamız cookie ile tutuyor
+
+builder.Services.AddAuthentication(cookieAuthenticationDefault.AuthenticationsScchema)AddCookie();
+
+clims nedir diye sordu orada takıldı sadece yetki değil kullancının bilgilerini tutan yer mi 
+login yaptıktan sonra kullanıcının tüm bilgilerine erişebiliyoruz bunların hepsi birer slimsmiş yazılışından emin değilim. 
+
+usercontroller iöerisinde: public asycn task<ActionResult> Login(LoginViewModel model)
+if(ModelState.IsValid){var isUser = await _userRepository.Users.FirstOrDefaultAsync(x=>x.Email
+
+userClaims.Add(new Claim(ClaimTypes.NameIdentifeir, isUser.UserId.TosTRİNG())); //claimleri ekliyor bir şeyler yapıyor admin maili direkt kod içine gömdü if(isUser.Email == "info@ahmetkaya.com"  bu doğru mu bileömiyorum
+
+var claimsIdentity )= new ClaimsIdentity(userClaims, CookieAuthenticationDefaults.AuthentcationScheme);
+var authProperties =new AuthenticationProperties{}
+
+await HttpContext SignInAsync 
+
+buralarda giriş yaptı mı diye de baktı redicetToAction("Index", "pOSTS"
+
+FALAN FİLAN HATALI GİRİŞTE DE geri dönüt yapıryoruz usercontroller.cs içerisinde login sistemi yaptı işte her şeyiyile sanırım
+
+httpget metodları eksikmiş bi onları ekledi httpget httppost 
+
+yönelndirme eksikmiş onu ekledi routing mi eksikmiş ne ama düzeltti artık oturum açabiliyor ve cookide görebiliyor.
+
+li class navitem 
+a href=# class nav link @ user.identity.name 
+a href /users/login class nav link Login 
+a href /users/logout class nav link Logout
+
+giriş yapına login görülmemeliyimiş
+@if(user.identity!.IsAuthenticated){
+
+
+çok kriitk bir bigli: login olduktan sonra url ye /users/login yazarsak girer miiz diye sordu. /users/login enterlarsa login sayfasına gider mi haaa sisteme zatebn girdik niye tekrar logine gidiyor diye soruyo bu işe girişte çk kritik olabiirmiş
+
+usercontroller.cs de bir if ekledi eğer giriş yapmışsa return redirectedaction (index post) yani giriş yapan kullanıcıyı logine yönlendirmiyor
+
+logoutta da await httpcontext signoutasync(cookieauthenticationdefaults
+return redirecttoaction(login)
+
+ya bu tarz şeyler işte kritik ama biz zaten bunlara dikkat etmeliyiz. dedim ya profesyonel bir iş yapacağız
+
+
+yorum yazarkenki yorum için giriş yapmalısınız uyarısını ekledi şimdi zaten dediğim gibi biz bunuen başından ona uygun halletmeliydik
+
+
+postcontrollerda var userıd= userfindfirstvalue(claimtypes.nameıdentifier
+var username =user.findfirstvalue(calimstypes.name
+
+görsel bilgisini girişte de alabiliriz dedi onu da halletti
+
+registerviewmodel ve register sayfalarını yaptı 
+
+zaten önceki yazdığı kodları kopyalayıp gerekşi değişiklikleri yapıyor
+
+compare ile kontroller yapıyor registerda sanırım loginde de yapıyordu buralar kritik tabi ama klasik 
+
+registerı neden asenkron yapmadık diye soruldu hoca sonra anlatıcam dedi ben de merak ettim şimdi bak hatamız avr mı diye bakıp hata yoksa asenkron yapacakmış okey söyledi
+
+
+usercontroller içerisinde if(modelstate.isvalid kısmında modelden gelen verilerle -userrepository createuser(new entity user yaptı 
+
+else modelstate.addmodelerror"user name ya da email kullanımda"
+
+post.cs kısmına dexriptio strin? ekledi
+
+bralarda biraz kaçırdım neler yaptığını ancak standart prosedürler olduğunu dğşünüyorum
+descriptionı seedata ya ekliyor 
+
+poscontroller içerisinde ıactionresult create ekliyor return view ile
+
+pviews post create.cshtml ekliyor yine standart ama eksik bir şey kalmasın bizim projemizde de hatta fazlasını yapalım 
+
+işte blog yazma post yazma işini de hallediyor şu an gene asp for kullanıyor otomatik çekiyor sanırım oydu bu form control form label span asp validation for title class text danger
+
+sen bu kısımları anlarsın
+
+postcontroller.cs içerisinde ıactionresult create (postcrateviewmodel model içerisinde if(modelstate.isvalid(var userId =User.FindFirstValue(claimtype.NameIdentifier
+_postRrepository.CreatePost
+new Post(title content url userıd model den geliyor bunların çoğu user ise  userıd den geliyor published datetimenow ımage ekleme yapmamaışız o nedenle sistemden default çekiyor
+
+return redirecttoAction(index)
+
+hocamız blog yazı yazma kısmını biraz kötü yapmış biz orada çok daha güzel bir blog yazma sistemi kuraibliriz mesela kalın yazmaa yazı boyutu falan ayarlatabiliriz renk falan ama kısıtlamalarla tabiki sonuçta bir bütünsellik yakalamalıyız ve yazı içerisinde görsel ekleme imkanı da sunulmalı
+
+otomatik çıkış da olmalı bu arada ya da otomatik girşi oturumu açık tut falan gene bestpracticeler ile ya her şeyi her şeyi yapmalıyız işte
+
+postlar için aktif deactive kısmı yapacağız diyor ama biz hem aktif pasif hem silme yapabiliriz.
+
+repositoryleri service veya generic oluşturabilrimişiz ama müfredata göre gitmiş belki biz projemizde farklı yapabiliriz 
+
+create kısmında authorize dersek giriş yapmamışlar göremeycekmş basit şeyler işte her şeyin bir mantığı var
+
+
+rol yoksa sadece kendi postunu adminse diğer işlemelr işe roller autherizaton authentication işleri
+
+list.cshtml oluşturdu burada image işlemleri tablo işlemleri yapıyor heralde post listeleme mi kullancıı listelemem m artık en boksa onu yapıyor
+
+evet post listesini görme işimiymiş admin hepsini görüyor liste şeklinde 
+burada tabi toplu seçme tek tek seçme gibi işlemler silme aktif de aktif post güncelleme edit falan kısımalrı da eklenecektir daha aklıma gelmeyen şeyler işte
+
+bunlar için de sanırım edit.cshtml gibi farklı dosylar oluşturdu
+
+postcontrollerda ise edit metodu düzenledi 
+
+ıpostrepositoryde de editpost oluşturdu 
+efpostrepositoryde de public oid editpost post post medotu oluşturudu
+var entity = -context.posts.firstordefault(i=>i.PostId == postId
+if(entity != null entity.Title = postTitle;
+entity.Description = post.description;
+entity.Content =post.Content;
+entity.Url =post.url
+entity.IsActive
+
+
+postcontroller.cs de _postreposiyort.editpost 
+return View(model); //HATA KONTROLÜ SANIRIM
+
+profil düzenlemesini de yapıyor kendi profilim başaksının profili postlar yorumlar beğeiler gibi burada include kullanıyor tabi yorumların hangi yoruma yapıldığı için theninclude kullanılıyor
+
+---------------------ÖDEV-----------------
+BİR BLOG SİTESİ pdf dosyasıyla paylaşacağım
+proje pdfinde mssql denilmiş ama sqllite kullanılabilir mssql de olur tabi 
+
+responsive tasarım ve görsel eklemede fark edebilir diyor hoca
+ve post eklemde tnmg diye bir şey söyledi bu çok işe yarar dedi
+
+crete the modal çıksın başarılı grişi mesela böyle ufak şeyler çok büyük + olur diyor
+
+isactive durumu grönüsün durumu yapılabilir
+
+seeddatayı istiyolarmış kesin ama daha sonra bir kaç blog yazısı ekle diyolar
+
+tnmg ne aq modal da diyo
+
+arayüz için template kullanmayın kendiniz yapın diyolar
+
+teknoloji kullanımında kısıtlama yok ama mimari kullanımında kısıtlama var gibi duruyor
+
+
+

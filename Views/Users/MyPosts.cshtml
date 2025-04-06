@@ -1,0 +1,122 @@
+@model IEnumerable<BlogApp.Entity.Post>
+
+@{
+    ViewData["Title"] = "Yazılarım";
+}
+
+<div class="container">
+    <h2>@ViewData["Title"]</h2>
+
+    <div class="mb-3">
+        <a asp-controller="Posts" asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Yeni Yazı
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            Henüz hiç yazınız bulunmuyor. Yeni bir yazı eklemek için yukarıdaki butonu kullanabilirsiniz.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Başlık</th>
+                        <th>Durum</th>
+                        <th>Oluşturulma Tarihi</th>
+                        <th>Yayınlanma Tarihi</th>
+                        <th>Etiketler</th>
+                        <th>Yorumlar</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var post in Model)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Posts" asp-action="Details" asp-route-url="@post.Url">
+                                    @post.Title
+                                </a>
+                            </td>
+                            <td>
+                                @switch (post.Status)
+                                {
+                                    case PostStatus.Draft:
+                                        <span class="badge bg-secondary">Taslak</span>
+                                        break;
+                                    case PostStatus.Published:
+                                        <span class="badge bg-success">Yayında</span>
+                                        break;
+                                    case PostStatus.Scheduled:
+                                        <span class="badge bg-info">Planlandı</span>
+                                        break;
+                                    case PostStatus.Archived:
+                                        <span class="badge bg-warning">Arşivlendi</span>
+                                        break;
+                                }
+                            </td>
+                            <td>@post.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>
+                                @(post.PublishedOn?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-")
+                            </td>
+                            <td>
+                                @foreach (var tag in post.Tags)
+                                {
+                                    <span class="badge bg-@tag.Color?.ToString().ToLower() me-1">@tag.Name</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">@post.Comments.Count</span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a asp-controller="Posts" asp-action="Edit" asp-route-id="@post.PostId" 
+                                       class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    @if (post.Status != PostStatus.Published)
+                                    {
+                                        <a asp-controller="Posts" asp-action="Publish" asp-route-id="@post.PostId"
+                                           class="btn btn-sm btn-success" onclick="return confirm('Yazıyı yayınlamak istediğinize emin misiniz?')">
+                                            <i class="bi bi-check-circle"></i>
+                                        </a>
+                                    }
+                                    @if (post.Status != PostStatus.Archived)
+                                    {
+                                        <a asp-controller="Posts" asp-action="Archive" asp-route-id="@post.PostId"
+                                           class="btn btn-sm btn-info" onclick="return confirm('Yazıyı arşivlemek istediğinize emin misiniz?')">
+                                            <i class="bi bi-archive"></i>
+                                        </a>
+                                    }
+                                    <a asp-controller="Posts" asp-action="Delete" asp-route-id="@post.PostId"
+                                       class="btn btn-sm btn-danger" onclick="return confirm('Yazıyı silmek istediğinize emin misiniz?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (ViewBag.TotalPages > 1)
+        {
+            <nav aria-label="Sayfalama">
+                <ul class="pagination justify-content-center">
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="MyPosts" asp-route-pageNumber="@i">@i</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        }
+    }
+</div> 

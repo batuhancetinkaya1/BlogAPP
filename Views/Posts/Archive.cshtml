@@ -1,0 +1,50 @@
+@model Dictionary<int, Dictionary<int, List<Post>>>
+@{
+    ViewData["Title"] = "Blog Arşivi";
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title mb-4">@ViewData["Title"]</h2>
+
+                @foreach (var yearGroup in Model.OrderByDescending(y => y.Key))
+                {
+                    <div class="year-group mb-4">
+                        <h3>@yearGroup.Key</h3>
+                        @foreach (var monthGroup in yearGroup.Value.OrderByDescending(m => m.Key))
+                        {
+                            <div class="month-group ms-4 mb-3">
+                                <h4 class="h5">@(new DateTime(yearGroup.Key, monthGroup.Key, 1).ToString("MMMM"))</h4>
+                                <div class="list-group">
+                                    @foreach (var post in monthGroup.Value.OrderByDescending(p => p.PublishedOn))
+                                    {
+                                        <a href="/posts/@post.Url" class="list-group-item list-group-item-action">
+                                            <div class="d-flex w-100 justify-content-between">
+                                                <h5 class="mb-1">@post.Title</h5>
+                                                <small class="text-muted">@post.PublishedOn?.ToString("dd MMM")</small>
+                                            </div>
+                                            <p class="mb-1">@post.Description</p>
+                                            <small class="text-muted">
+                                                @foreach (var tag in post.Tags)
+                                                {
+                                                    <span class="badge bg-@tag.Color?.ToString().ToLower() me-1">@tag.Name</span>
+                                                }
+                                            </small>
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <vc:tags-menu></vc:tags-menu>
+        <vc:new-posts></vc:new-posts>
+    </div>
+</div> 

@@ -1,0 +1,82 @@
+@model IEnumerable<Post>
+
+@{
+    ViewData["Title"] = "Yazılar";
+}
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>@ViewData["Title"]</h1>
+        </div>
+        <div class="col-auto">
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Yeni Yazı
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            @foreach (var post in Model)
+            {
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h2 class="card-title h4 mb-0">
+                                <a href="/posts/@post.Url" class="text-decoration-none">@post.Title</a>
+                            </h2>
+                            <span class="badge bg-@(post.Status == PostStatus.Published ? "success" : 
+                                                 post.Status == PostStatus.Draft ? "warning" : 
+                                                 post.Status == PostStatus.Scheduled ? "info" : "secondary")">
+                                @(post.Status == PostStatus.Published ? "Yayında" : 
+                                  post.Status == PostStatus.Draft ? "Taslak" : 
+                                  post.Status == PostStatus.Scheduled ? "Planlandı" : "Arşivlenmiş")
+                            </span>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(post.Description))
+                        {
+                            <p class="card-text">@post.Description</p>
+                        }
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted small">
+                                <i class="bi bi-person me-1"></i>@post.User.UserName
+                                <span class="mx-2">•</span>
+                                <i class="bi bi-calendar me-1"></i>
+                                @if (post.Status == PostStatus.Scheduled)
+                                {
+                                    <span>@post.ScheduledPublishTime?.ToString("dd.MM.yyyy HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span>@post.PublishedOn?.ToString("dd.MM.yyyy HH:mm")</span>
+                                }
+                                <span class="mx-2">•</span>
+                                <i class="bi bi-chat me-1"></i>@post.Comments.Count yorum
+                            </div>
+
+                            <div>
+                                @foreach (var tag in post.Tags)
+                                {
+                                    <a href="/posts/tag/@tag.Url" class="badge bg-@tag.Color?.ToString().ToLower() text-decoration-none me-1">@tag.Name</a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="col-md-4">
+            @await Component.InvokeAsync("TagsMenu")
+            @await Component.InvokeAsync("NewPosts")
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Add any necessary JavaScript here
+    </script>
+} 

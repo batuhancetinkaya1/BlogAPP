@@ -1,0 +1,197 @@
+@model BlogApp.Models.PostCreateViewModel
+
+@{
+    ViewData["Title"] = "Yeni Blog Yazısı";
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title mb-4">@ViewData["Title"]</h2>
+                
+                <form asp-action="Create" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    
+                    <div class="form-floating mb-3">
+                        <input asp-for="Title" class="form-control" placeholder="Başlık" />
+                        <label asp-for="Title">Başlık</label>
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="form-floating mb-3">
+                        <input asp-for="Url" class="form-control" placeholder="URL" />
+                        <label asp-for="Url">URL</label>
+                        <span asp-validation-for="Url" class="text-danger"></span>
+                        <div class="form-text">Boş bırakırsanız başlıktan otomatik oluşturulur.</div>
+                    </div>
+                    
+                    <div class="form-floating mb-3">
+                        <textarea asp-for="Description" class="form-control" placeholder="Açıklama" style="height: 100px"></textarea>
+                        <label asp-for="Description">Açıklama</label>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label asp-for="Content" class="form-label">İçerik</label>
+                        <textarea asp-for="Content" id="editor"></textarea>
+                        <span asp-validation-for="Content" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label asp-for="ImageFile" class="form-label">Kapak Fotoğrafı</label>
+                        <input asp-for="ImageFile" class="form-control" accept="image/*" onchange="previewImage(this)" />
+                        <span asp-validation-for="ImageFile" class="text-danger"></span>
+                        <img id="imagePreview" class="mt-2 rounded d-none" style="max-width: 300px;" />
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label">Aktif</label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="IsDraft" class="form-check-input" id="isDraft" onchange="toggleScheduling()" />
+                        <label asp-for="IsDraft" class="form-check-label">Taslak Olarak Kaydet</label>
+                    </div>
+
+                    <div id="schedulingOptions" class="mb-3 d-none">
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="enableScheduling" onchange="toggleScheduleDateTime()" />
+                            <label class="form-check-label" for="enableScheduling">Yayın Zamanını Planla</label>
+                        </div>
+                        <div id="scheduleDateTimeGroup" class="d-none">
+                            <div class="form-floating">
+                                <input asp-for="ScheduledPublishTime" type="datetime-local" class="form-control" id="scheduledDateTime" />
+                                <label asp-for="ScheduledPublishTime">Yayın Zamanı</label>
+                                <span asp-validation-for="ScheduledPublishTime" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Etiketler</label>
+                        <div class="row">
+                            @foreach (var tag in ViewBag.Tags ?? new List<BlogApp.Entity.Tag>())
+                            {
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="tagIds" value="@tag.TagId" class="form-check-input" />
+                                        <label class="form-check-label">@tag.Name</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Geri Dön
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-2"></i>Kaydet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Markdown Rehberi</h5>
+                <hr>
+                <p class="mb-2">Başlıklar:</p>
+                <pre class="bg-light p-2 rounded">
+# Başlık 1
+## Başlık 2
+### Başlık 3</pre>
+                
+                <p class="mb-2 mt-3">Listeler:</p>
+                <pre class="bg-light p-2 rounded">
+- Liste öğesi
+* Liste öğesi
+1. Numaralı liste</pre>
+                
+                <p class="mb-2 mt-3">Bağlantılar:</p>
+                <pre class="bg-light p-2 rounded">[Bağlantı metni](URL)</pre>
+                
+                <p class="mb-2 mt-3">Resimler:</p>
+                <pre class="bg-light p-2 rounded">![Alt metin](Resim URL)</pre>
+                
+                <p class="mb-2 mt-3">Kod blokları:</p>
+                <pre class="bg-light p-2 rounded">```
+Kod bloğu
+```</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    <script>
+        tinymce.init({
+            selector: '#editor',
+            plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+            height: 500,
+            images_upload_url: '/Posts/UploadImage',
+            automatic_uploads: true,
+            images_reuse_filename: true,
+            language: 'tr',
+            skin: 'oxide',
+        });
+
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.classList.remove('d-none');
+                }
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.classList.add('d-none');
+                preview.src = '';
+            }
+        }
+
+        function toggleScheduling() {
+            const isDraft = document.getElementById('isDraft');
+            const schedulingOptions = document.getElementById('schedulingOptions');
+            const enableScheduling = document.getElementById('enableScheduling');
+            const scheduleDateTimeGroup = document.getElementById('scheduleDateTimeGroup');
+            
+            if (isDraft.checked) {
+                schedulingOptions.classList.add('d-none');
+                enableScheduling.checked = false;
+                scheduleDateTimeGroup.classList.add('d-none');
+            } else {
+                schedulingOptions.classList.remove('d-none');
+            }
+        }
+
+        function toggleScheduleDateTime() {
+            const enableScheduling = document.getElementById('enableScheduling');
+            const scheduleDateTimeGroup = document.getElementById('scheduleDateTimeGroup');
+            
+            if (enableScheduling.checked) {
+                scheduleDateTimeGroup.classList.remove('d-none');
+            } else {
+                scheduleDateTimeGroup.classList.add('d-none');
+            }
+        }
+
+        // Set minimum date for scheduling to now
+        const scheduledDateTime = document.getElementById('scheduledDateTime');
+        if (scheduledDateTime) {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            scheduledDateTime.min = now.toISOString().slice(0, 16);
+        }
+    </script>
+} 
