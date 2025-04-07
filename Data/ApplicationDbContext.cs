@@ -15,6 +15,7 @@ namespace BlogApp.Data
         public DbSet<Tag> Tags { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<PostReaction> PostReactions { get; set; }
+        public DbSet<CommentReaction> CommentReactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -58,6 +59,12 @@ namespace BlogApp.Data
                 .HasForeignKey(c => c.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Comment>()
+                .HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // PostReaction configuration
             modelBuilder.Entity<PostReaction>()
                 .HasOne(r => r.Post)
@@ -73,6 +80,23 @@ namespace BlogApp.Data
 
             modelBuilder.Entity<PostReaction>()
                 .HasIndex(r => new { r.PostId, r.UserId })
+                .IsUnique();
+
+            // CommentReaction configuration
+            modelBuilder.Entity<CommentReaction>()
+                .HasOne(r => r.Comment)
+                .WithMany(c => c.Reactions)
+                .HasForeignKey(r => r.CommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CommentReaction>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CommentReaction>()
+                .HasIndex(r => new { r.CommentId, r.UserId })
                 .IsUnique();
 
             // Create a many-to-many relationship between Post and Tag

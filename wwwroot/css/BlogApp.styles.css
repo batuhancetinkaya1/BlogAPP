@@ -1,0 +1,38 @@
+/* BlogApp Styles */
+
+/* Genel Stiller */
+.entity-framework-tag {
+    background-color: #0dcaf0 !important;
+}
+
+.css-tag {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+.react-tag {
+    background-color: #61DAFB !important;
+    color: #282c34 !important;
+}
+
+/* Yorum stilleri */
+.comment {
+    transition: all 0.3s ease;
+}
+
+.comment:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.reply {
+    transition: all 0.3s ease;
+}
+
+.reply:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Beğeni ve yorum sayaçları */
+.likes-count, .dislikes-count {
+    transition: all 0.2s ease;
+} 

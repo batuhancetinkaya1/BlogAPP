@@ -6,11 +6,23 @@ using BlogApp.Data.Abstract;
 using BlogApp.Data.Concrete.EfCore;
 using BlogApp.Data.SeedData;
 using BlogApp.Entity;
+using Microsoft.AspNetCore.Antiforgery;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// CSRF token ayarları için AntiForgery hizmetini yapılandırma
+builder.Services.AddAntiforgery(options => 
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.SuppressXFrameOptionsHeader = false;
+    options.Cookie.Name = "CSRF-TOKEN";
+    options.Cookie.HttpOnly = false; // JavaScript'in tokeni okumasına izin ver
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+});
 
 // Configure DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -88,10 +100,61 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// AntiForgery özelleştirilmiş middleware
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value;
+    if (context.Request.Method == "POST" && 
+        (path.Contains("/Posts/AddReaction") || 
+         path.Contains("/Posts/AddComment") || 
+         path.Contains("/Posts/AddCommentReaction")))
+    {
+        // CSRF token'ı çek
+        var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+        try 
+        {
+            await antiforgery.ValidateRequestAsync(context);
+            Console.WriteLine($"CSRF token doğrulaması başarılı: {path}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"CSRF token doğrulama hatası: {ex.Message}");
+            context.Response.StatusCode = 400;
+            await context.Response.WriteAsJsonAsync(new { success = false, message = "CSRF token doğrulaması başarısız" });
+            return;
+        }
+    }
+
+    await next(context);
+});
+
+// CSRF middleware'ini ekleyelim
+app.UseAntiforgery();
+
+// Tüm controller route'larından önce "{controller=Home}/{action=Index}/{id?}" pattern'ı ekleyelim
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
 app.MapControllerRoute(
     name: "posts",
     pattern: "posts/{url}",
     defaults: new { controller = "Posts", action = "Details" });
+
+app.MapControllerRoute(
+    name: "post_reactions",
+    pattern: "Posts/AddReaction",
+    defaults: new { controller = "Posts", action = "AddReaction" });
+
+app.MapControllerRoute(
+    name: "post_comments",
+    pattern: "Posts/AddComment",
+    defaults: new { controller = "Posts", action = "AddComment" });
+
+app.MapControllerRoute(
+    name: "comment_reactions",
+    pattern: "Posts/AddCommentReaction",
+    defaults: new { controller = "Posts", action = "AddCommentReaction" });
 
 app.MapControllerRoute(
     name: "tags",
@@ -127,9 +190,5 @@ app.MapControllerRoute(
     name: "posts_search",
     pattern: "Posts/Search",
     defaults: new { controller = "Posts", action = "Search" });
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 await app.RunAsync();

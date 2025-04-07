@@ -30,7 +30,7 @@
 
                         <div class="mb-3">
                             <label asp-for="Content" class="form-label">İçerik</label>
-                            <textarea asp-for="Content" class="form-control" id="editor"></textarea>
+                            <textarea asp-for="Content" class="form-control" id="Content"></textarea>
                             <span asp-validation-for="Content" class="text-danger"></span>
                         </div>
 
@@ -60,7 +60,7 @@
                                                    id="tag-@tag.TagId" 
                                                    @(Model.SelectedTagIds.Contains(tag.TagId) ? "checked" : "") />
                                             <label class="form-check-label" for="tag-@tag.TagId">
-                                                <span class="badge bg-@(tag.Color.HasValue ? tag.Color.Value.ToString().ToLower() : "secondary")">@tag.Name</span>
+                                                <span class="badge bg-@(tag.Color != null ? tag.Color.ToString().ToLower() : "secondary")">@tag.Name</span>
                                             </label>
                                         </div>
                                     </div>
@@ -135,7 +135,7 @@
     <script src="https://cdn.ckeditor.com/ckeditor5/27.1.0/classic/ckeditor.js"></script>
     <script>
         ClassicEditor
-            .create(document.querySelector('#editor'))
+            .create(document.querySelector('#Content'))
             .catch(error => {
                 console.error(error);
             });

@@ -25,6 +25,14 @@
                     {
                         <p class="card-text">@(post.Description.Length > 80 ? post.Description.Substring(0, 80) + "..." : post.Description)</p>
                     }
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="text-muted small">
+                            <i class="bi bi-hand-thumbs-up me-1"></i>@post.Reactions.Count(r => r.IsLike)
+                            <span class="mx-1">•</span>
+                            <i class="bi bi-chat me-1"></i>@post.Comments.Count
+                        </div>
+                    </div>
                 </div>
                 <div class="card-footer bg-transparent border-top-0">
                     <a href="/posts/@post.Url" class="btn btn-outline-primary btn-sm">Okumaya Devam Et</a>

@@ -13,4 +13,5 @@ public interface IPostRepository
     Task UpdateAsync(Post post);
     Task DeleteAsync(Post post);
     Task<List<Post>> SearchAsync(string searchTerm);
+    Task<Post> GetByUrlWithCommentsAndReactions(string url);
 } 

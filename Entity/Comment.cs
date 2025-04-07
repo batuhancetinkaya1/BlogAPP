@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Collections.Generic;
 
 namespace BlogApp.Entity;
 
@@ -9,6 +10,8 @@ public class Comment
     {
         Content = string.Empty;
         CreatedAt = DateTime.UtcNow;
+        Replies = new List<Comment>();
+        Reactions = new List<CommentReaction>();
     }
 
     [Key]
@@ -30,4 +33,12 @@ public class Comment
 
     public int UserId { get; set; }
     public virtual User User { get; set; } = null!;
+
+    // Yorum cevapları için
+    public int? ParentCommentId { get; set; }
+    public virtual Comment? ParentComment { get; set; }
+    public virtual ICollection<Comment> Replies { get; set; }
+
+    // Yorum beğenileri için
+    public virtual ICollection<CommentReaction> Reactions { get; set; }
 } 

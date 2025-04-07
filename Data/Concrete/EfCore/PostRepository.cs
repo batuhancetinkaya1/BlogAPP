@@ -26,11 +26,38 @@ namespace BlogApp.Data.Concrete.EfCore
 
         public async Task<List<Post>> GetAllAsync()
         {
-            return await _context.Posts
-                .Include(p => p.User)
-                .Include(p => p.Tags)
-                .OrderByDescending(p => p.CreatedAt)
-                .ToListAsync();
+            Console.WriteLine("GetAllAsync metodu çağrıldı");
+            
+            try
+            {
+                var posts = await _context.Posts
+                    .Include(p => p.User)
+                    .Include(p => p.Tags)
+                    .Include(p => p.Comments)
+                        .ThenInclude(c => c.User)
+                    .Include(p => p.Comments)
+                        .ThenInclude(c => c.Reactions)
+                    .Include(p => p.Reactions)
+                    .AsSplitQuery() // Daha büyük veri setleri için performans iyileştirmesi
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToListAsync();
+                    
+                Console.WriteLine($"GetAllAsync: {posts.Count} post yüklendi.");
+                
+                // Debug için post verilerini logla
+                foreach (var post in posts)
+                {
+                    Console.WriteLine($"Post ID: {post.PostId}, Başlık: {post.Title}, Yorumlar: {post.Comments?.Count ?? 0}, Beğeniler: {post.Reactions?.Count ?? 0}");
+                }
+                
+                return posts;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GetAllAsync hata: {ex.Message}");
+                // Hata durumunda boş liste döndür
+                return new List<Post>();
+            }
         }
 
         public async Task<List<Post>> GetAllWithDetailsAsync()
@@ -101,6 +128,35 @@ namespace BlogApp.Data.Concrete.EfCore
                     (p.Content.ToLower().Contains(searchTerm) ? 1 : 0))
                 .ThenByDescending(p => p.CreatedAt)
                 .ToListAsync();
+        }
+
+        public async Task<Post> GetByUrlWithCommentsAndReactions(string url)
+        {
+            Console.WriteLine($"Repository: GetByUrlWithCommentsAndReactions çağrıldı, URL: {url}");
+            
+            var post = await _context.Posts
+                .Include(p => p.User)
+                .Include(p => p.Tags)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.User)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.Reactions)
+                        .ThenInclude(r => r.User)
+                .Include(p => p.Reactions)
+                    .ThenInclude(r => r.User)
+                .AsSplitQuery() // Büyük sorgular için performans iyileştirmesi
+                .FirstOrDefaultAsync(p => p.Url == url);
+            
+            if (post != null)
+            {
+                Console.WriteLine($"Repository: Post bulundu, ID: {post.PostId}, Yorumlar: {post.Comments?.Count ?? 0}, Beğeniler: {post.Reactions?.Count ?? 0}");
+            }
+            else
+            {
+                Console.WriteLine("Repository: Post bulunamadı!");
+            }
+            
+            return post;
         }
     }
 } 

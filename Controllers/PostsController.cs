@@ -79,23 +79,59 @@ public class PostsController : Controller
     [Route("posts/{url}")]
     public async Task<IActionResult> Details(string url)
     {
-        // Since we don't have GetByUrlAsync in the interface, we'll need to retrieve all posts
-        // and filter by URL
-        var posts = await _postRepository.GetAllAsync();
-        var post = posts.FirstOrDefault(p => p.Url == url);
-        
+        try
+        {
+            Console.WriteLine($"Details: Post çağrılıyor URL: {url}");
+            var post = await _postRepository.GetByUrlWithCommentsAndReactions(url);
         if (post == null)
         {
+                Console.WriteLine("Details: Post bulunamadı!");
             return NotFound();
         }
 
-        // Eğer resim yoksa varsayılan resmi kullan
-        if (string.IsNullOrEmpty(post.Image))
-        {
-            post.Image = "/img/posts/default.jpg";
+            Console.WriteLine($"Details: Post bulundu ID: {post.PostId}, Yorumlar: {post.Comments?.Count ?? 0}, Beğeniler: {post.Reactions?.Count ?? 0}");
+            
+            // Kullanıcı giriş yapmışsa beğenileri kontrol et
+            int? userId = null;
+            if (User.Identity.IsAuthenticated)
+            {
+                string userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedUserId))
+                {
+                    userId = parsedUserId;
+                    Console.WriteLine($"Details: Giriş yapan kullanıcı ID: {userId}");
+                }
+            }
+            
+            ViewBag.UserReaction = userId.HasValue 
+                ? post.Reactions?.FirstOrDefault(r => r.UserId == userId)?.IsLike 
+                : null;
+                
+            Console.WriteLine($"Details: Kullanıcının yazıya tepkisi: {ViewBag.UserReaction}");
+
+            var commentViewModel = new Dictionary<int, List<object>>();
+            if (post.Comments != null)
+            {
+                foreach (var comment in post.Comments)
+                {
+                    Console.WriteLine($"Details: Yorum ID: {comment.CommentId}, Tepkiler: {comment.Reactions?.Count ?? 0}, ParentId: {comment.ParentCommentId}");
+                    
+                    // Yoruma kullanıcı tepkisi
+                    var userCommentReaction = userId.HasValue 
+                        ? comment.Reactions?.FirstOrDefault(r => r.UserId == userId)?.IsLike 
+                        : null;
+                        
+                    Console.WriteLine($"Details: Kullanıcının yoruma tepkisi (ID: {comment.CommentId}): {userCommentReaction}");
+                }
         }
 
         return View(post);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Details: Hata oluştu: {ex.Message}");
+            return StatusCode(500, "Bir hata oluştu: " + ex.Message);
+        }
     }
 
     [Authorize]
@@ -103,129 +139,164 @@ public class PostsController : Controller
     [Route("Posts/Create")]
     public async Task<IActionResult> Create()
     {
-        ViewBag.Tags = await _tagRepository.GetAllAsync();
-        return View(new Models.PostCreateViewModel());
-    }
-
-    [Authorize]
-    [HttpPost]
-    [Route("Posts/Create")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Models.PostCreateViewModel model, bool directPublish = false)
-    {
-        Console.WriteLine($"Create Post metodu çağrıldı. directPublish: {directPublish}");
-        
-        if (!ModelState.IsValid)
-        {
-            ViewBag.Tags = await _tagRepository.GetAllAsync();
-            return View(model);
-        }
-
         try
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var user = await _userRepository.GetByIdAsync(userId);
+            Console.WriteLine("Create GET action başladı");
+            var tags = await _tagRepository.GetAllAsync();
+            Console.WriteLine($"Toplam {tags.Count()} etiket yüklendi");
+            ViewBag.Tags = tags;
+            return View(new Models.PostCreateViewModel());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Create GET action hatası: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            // Hata durumunda ModelState'e bilgileri ekle
+            ModelState.AddModelError("", "Sayfa yüklenirken bir hata oluştu: " + ex.Message);
+            
+            // ViewBag.Tags boş olursa hata verebilir, boş liste gönderelim
+            ViewBag.Tags = new List<Entity.Tag>();
+            return View(new Models.PostCreateViewModel());
+        }
+    }
 
-            if (user == null)
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    [Route("Posts/Create")]
+    public async Task<IActionResult> Create(Models.PostCreateViewModel model, string action)
+    {
+        try
+        {
+            Console.WriteLine($"Create POST action başladı. model: {model?.Title}, action: {action}");
+            
+            // Form submit butonundan gelen değeri kontrol et
+            if (string.IsNullOrEmpty(action))
             {
-                TempData["error"] = "Kullanıcı bulunamadı. Lütfen tekrar giriş yapın.";
-                return RedirectToAction("Login", "Users");
+                // Form'da action değeri belirtilmemişse, default olarak taslak kabul et
+                action = "draft";
+                Console.WriteLine("Action değeri boş, draft olarak varsayıldı");
             }
-
-            // Eğer directPublish true ise IsDraft false olarak ayarla
-            if (directPublish)
+            
+            // Modeli log'a yazdır (hata ayıklama için)
+            foreach (var prop in typeof(Models.PostCreateViewModel).GetProperties())
             {
-                model.IsDraft = false;
+                Console.WriteLine($"Property {prop.Name}: {prop.GetValue(model)}");
+            }
+            
+            // ViewBag.Tags doldur
+            ViewBag.Tags = await _tagRepository.GetAllAsync();
+            
+            if (!ModelState.IsValid)
+            {
+                Console.WriteLine("Model doğrulama hatası:");
+                foreach (var key in ModelState.Keys)
+                {
+                    var state = ModelState[key];
+                    if (state.Errors.Count > 0)
+                    {
+                        Console.WriteLine($"Key: {key}");
+                        foreach (var error in state.Errors)
+                        {
+                            Console.WriteLine($" - Error: {error.ErrorMessage}");
+                        }
+                    }
+                }
+                
+                return View(model);
             }
 
             var post = new Post
             {
                 Title = model.Title,
                 Content = model.Content,
-                Description = model.Description ?? "",
+                Description = model.Description,
+                Url = !string.IsNullOrEmpty(model.Url) ? model.Url : GenerateUrl(model.Title),
+                CreatedAt = DateTime.UtcNow,
+                UserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"),
+                IsActive = model.IsActive,
                 VideoUrl = model.VideoUrl,
                 Keywords = model.Keywords,
                 ReadTime = model.ReadTime,
-                UserId = userId,
-                User = user,
-                CreatedAt = DateTime.UtcNow,
-                Status = directPublish ? PostStatus.Published : (model.IsDraft ? PostStatus.Draft : PostStatus.Published),
-                IsActive = model.IsActive
+                Status = model.IsDraft || action == "draft" ? PostStatus.Draft : PostStatus.Published
             };
-
-            // Handle URL generation
-            if (string.IsNullOrEmpty(model.Url))
-            {
-                post.Url = GenerateUrl(model.Title);
-            }
-            else
-            {
-                post.Url = GenerateUrl(model.Url);
-            }
-
-            // Handle scheduling
-            if (!directPublish && !model.IsDraft && model.ScheduledPublishTime.HasValue)
-            {
-                post.Status = PostStatus.Scheduled;
-                post.ScheduledPublishTime = model.ScheduledPublishTime;
-            }
-            else if (directPublish || (!model.IsDraft && !model.ScheduledPublishTime.HasValue))
+            
+            // Yayınlama durumunu belirle
+            if (action == "publish" || (!model.IsDraft && action != "draft"))
             {
                 post.Status = PostStatus.Published;
                 post.PublishedOn = DateTime.UtcNow;
+                Console.WriteLine("Post durumu Published olarak ayarlandı");
+            }
+            else
+            {
+                post.Status = PostStatus.Draft;
+                Console.WriteLine("Post durumu Draft olarak ayarlandı");
             }
 
-            // Handle image upload
-            if (model.ImageFile != null && model.ImageFile.Length > 0)
+            // Dosya yükleme işlemi
+            if (model.ImageFile != null)
             {
-                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "posts");
-                if (!Directory.Exists(uploadsFolder))
+                var extension = Path.GetExtension(model.ImageFile.FileName).ToLower();
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+                
+                if (!allowedExtensions.Contains(extension))
                 {
-                    Directory.CreateDirectory(uploadsFolder);
+                    ModelState.AddModelError("ImageFile", "Sadece .jpg, .jpeg, .png ve .webp uzantılı dosyalar yüklenebilir.");
+                    return View(model);
                 }
-
-                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(model.ImageFile.FileName);
-                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                
+                var fileName = $"{Guid.NewGuid()}{extension}";
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "posts", fileName);
+                
+                // Dizin kontrolü
+                var imageDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "posts");
+                if (!Directory.Exists(imageDir))
+                {
+                    Directory.CreateDirectory(imageDir);
+                }
 
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
                     await model.ImageFile.CopyToAsync(fileStream);
                 }
 
-                post.Image = "/img/posts/" + uniqueFileName;
+                post.Image = $"/img/posts/{fileName}";
             }
             else
             {
-                // Resim yüklenmezse varsayılan resmi kullan
+                // Varsayılan bir resim ata
                 post.Image = "/img/posts/default.jpg";
             }
-
-            // Handle tags
+            
+            // Post'u kaydet
+            await _postRepository.AddAsync(post);
+            
+            // Etiketleri ekle
             if (model.SelectedTagIds != null && model.SelectedTagIds.Count > 0)
             {
-                post.Tags = new List<Tag>();
-                var allTags = await _tagRepository.GetAllAsync();
                 foreach (var tagId in model.SelectedTagIds)
                 {
-                    var tag = allTags.FirstOrDefault(t => t.TagId == tagId);
+                    var tag = await _tagRepository.GetByIdAsync(tagId);
                     if (tag != null)
                     {
                         post.Tags.Add(tag);
                     }
                 }
+                await _postRepository.UpdateAsync(post);
             }
-
-            await _postRepository.AddAsync(post);
-            TempData["success"] = "Blog yazısı başarıyla oluşturuldu.";
-            return RedirectToAction(nameof(Details), new { url = post.Url });
+            
+            TempData["success"] = action == "publish" 
+                ? "Yazınız başarıyla yayınlandı." 
+                : "Yazınız taslak olarak kaydedildi.";
+            
+            return RedirectToAction("Details", new { url = post.Url });
         }
         catch (Exception ex)
         {
-            // Log the error
-            Console.WriteLine($"Blog yazısı oluşturma hatası: {ex.Message}");
-            
-            // Return to form with errors
-            TempData["error"] = $"Blog yazısı oluşturulurken bir hata oluştu: {ex.Message}";
+            Console.WriteLine($"Post oluşturma sırasında hata: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            ModelState.AddModelError("", $"Bir hata oluştu: {ex.Message}");
             ViewBag.Tags = await _tagRepository.GetAllAsync();
             return View(model);
         }
@@ -511,71 +582,223 @@ public class PostsController : Controller
 
     [Authorize]
     [HttpPost]
+    [Route("/Posts/AddComment")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddComment([FromBody] CommentViewModel model)
     {
-        if (string.IsNullOrWhiteSpace(model.Content))
+        try
         {
-            return Json(new { success = false, message = "Yorum içeriği boş olamaz." });
+            if (model == null || model.PostId <= 0 || string.IsNullOrWhiteSpace(model.Content))
+            {
+                return Json(new { success = false, message = "Geçersiz istek veya yorum içeriği boş." });
         }
 
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var post = await _postRepository.GetByIdAsync(model.PostId);
-
+            Console.WriteLine($"AddComment: Kullanıcı ID: {userId}, Post ID: {model.PostId}, ParentID: {model.ParentCommentId}");
+            
+            var user = await _userRepository.GetByIdAsync(userId);
+            
+            if (user == null)
+            {
+                Console.WriteLine("AddComment: Kullanıcı bulunamadı");
+                return Json(new { success = false, message = "Kullanıcı bulunamadı." });
+            }
+            
+            var post = await _postRepository.GetByIdAsync(model.PostId);
         if (post == null)
         {
+                Console.WriteLine("AddComment: Post bulunamadı");
             return Json(new { success = false, message = "Yazı bulunamadı." });
         }
 
+            // Eğer parentCommentId varsa, bu yorumun var olduğunu kontrol et
+            if (model.ParentCommentId.HasValue)
+            {
+                var parentComment = await _commentRepository.GetByIdAsync(model.ParentCommentId.Value);
+                if (parentComment == null)
+                {
+                    Console.WriteLine($"AddComment: Ebeveyn yorum bulunamadı - ID: {model.ParentCommentId.Value}");
+                    return Json(new { success = false, message = "Yanıt verilen yorum bulunamadı." });
+                }
+                
+                Console.WriteLine($"AddComment: Ebeveyn yorum bulundu - ID: {parentComment.CommentId}");
+            }
+
         var comment = new Comment
         {
-            Content = model.Content,
+                Content = model.Content.Trim(),
             CreatedAt = DateTime.UtcNow,
             PublishedOn = DateTime.UtcNow,
             PostId = model.PostId,
             UserId = userId,
-            IsActive = true
+                IsActive = true,
+                ParentCommentId = model.ParentCommentId
         };
 
+            Console.WriteLine("AddComment: Yorum kaydediliyor");
         await _commentRepository.AddAsync(comment);
-        return Json(new { success = true, message = "Yorum başarıyla eklendi." });
-    }
-
-    public class CommentViewModel
-    {
-        public int PostId { get; set; }
-        public string? Content { get; set; }
+            
+            Console.WriteLine($"AddComment: Yorum başarıyla kaydedildi - ID: {comment.CommentId}");
+            
+            return Json(new { 
+                success = true, 
+                message = "Yorum başarıyla eklendi.",
+                commentId = comment.CommentId,
+                userName = user.UserName,
+                userImage = user.Image,
+                content = comment.Content,
+                formattedDate = comment.CreatedAt.ToString("dd MMM yyyy HH:mm"),
+                isParentComment = !comment.ParentCommentId.HasValue,
+                parentCommentId = comment.ParentCommentId
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AddComment error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return Json(new { success = false, message = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin." });
+        }
     }
 
     [Authorize]
     [HttpPost]
+    [Route("/Posts/AddCommentReaction")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddCommentReaction([FromBody] CommentReactionViewModel model)
+    {
+        try
+        {
+            if (model == null || model.CommentId <= 0)
+            {
+                return Json(new { success = false, message = "Geçersiz istek." });
+            }
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            Console.WriteLine($"AddCommentReaction: Kullanıcı ID: {userId}, Yorum ID: {model.CommentId}, IsLike: {model.IsLike}");
+            
+            var comment = await _commentRepository.GetByIdAsync(model.CommentId);
+
+            if (comment == null)
+            {
+                Console.WriteLine("AddCommentReaction: Yorum bulunamadı");
+                return Json(new { success = false, message = "Yorum bulunamadı." });
+            }
+
+            string action = "";
+            var existingReaction = comment.Reactions.FirstOrDefault(r => r.UserId == userId);
+            Console.WriteLine($"AddCommentReaction: Mevcut reaksiyon: {(existingReaction != null ? $"ID: {existingReaction.CommentReactionId}, IsLike: {existingReaction.IsLike}" : "Yok")}");
+            
+            if (existingReaction != null)
+            {
+                // Zaten bir reaksiyon var
+                if (existingReaction.IsLike == model.IsLike)
+                {
+                    // Aynı tip reaksiyon - kaldır
+                    Console.WriteLine("AddCommentReaction: Aynı tip reaksiyon - kaldırılıyor");
+                    comment.Reactions.Remove(existingReaction);
+                    action = "removed";
+                }
+                else
+                {
+                    // Farklı tip reaksiyon - güncelle
+                    Console.WriteLine("AddCommentReaction: Farklı tip reaksiyon - güncelleniyor");
+                    existingReaction.IsLike = model.IsLike;
+                    action = "updated";
+                }
+            }
+            else
+            {
+                // Yeni reaksiyon ekle
+                Console.WriteLine("AddCommentReaction: Yeni reaksiyon ekleniyor");
+                comment.Reactions.Add(new CommentReaction
+                {
+                    CommentId = model.CommentId,
+                    UserId = userId,
+                    IsLike = model.IsLike,
+                    CreatedAt = DateTime.UtcNow
+                });
+                action = "added";
+            }
+
+            // Değişiklikleri kaydet
+            Console.WriteLine("AddCommentReaction: Değişiklikler kaydediliyor");
+            await _commentRepository.UpdateAsync(comment);
+            
+            // Değişikliklerden sonra yorumu tekrar çek ve sayıları güncelle
+            comment = await _commentRepository.GetByIdAsync(model.CommentId);
+            
+            // Gerçek sayıları hesapla
+            int likesCount = comment.Reactions.Count(r => r.IsLike);
+            int dislikesCount = comment.Reactions.Count(r => !r.IsLike);
+            
+            Console.WriteLine($"AddCommentReaction: İşlem tamamlandı - Beğeni: {likesCount}, Beğenmeme: {dislikesCount}");
+
+            return Json(new { 
+                success = true, 
+                message = model.IsLike ? "Yorum beğenildi." : "Yorum beğenilmedi.", 
+                action,
+                likesCount,
+                dislikesCount
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AddCommentReaction error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return Json(new { success = false, message = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin." });
+        }
+    }
+
+    [Authorize]
+    [HttpPost]
+    [Route("/Posts/AddReaction")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddReaction([FromBody] ReactionViewModel model)
     {
+        try
+        {
+            if (model == null || model.PostId <= 0)
+            {
+                return Json(new { success = false, message = "Geçersiz istek." });
+            }
+
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            Console.WriteLine($"AddReaction: Kullanıcı ID: {userId}, Post ID: {model.PostId}, IsLike: {model.IsLike}");
+            
         var post = await _postRepository.GetByIdAsync(model.PostId);
 
         if (post == null)
         {
+                Console.WriteLine("AddReaction: Post bulunamadı");
             return Json(new { success = false, message = "Yazı bulunamadı." });
         }
 
+            string action = "";
         var existingReaction = post.Reactions.FirstOrDefault(r => r.UserId == userId);
+            Console.WriteLine($"AddReaction: Mevcut reaksiyon: {(existingReaction != null ? $"ID: {existingReaction.PostReactionId}, IsLike: {existingReaction.IsLike}" : "Yok")}");
+            
         if (existingReaction != null)
         {
+                // Zaten bir reaksiyon var
             if (existingReaction.IsLike == model.IsLike)
             {
+                    // Aynı tip reaksiyon - kaldır
+                    Console.WriteLine("AddReaction: Aynı tip reaksiyon - kaldırılıyor");
                 post.Reactions.Remove(existingReaction);
-                await _postRepository.UpdateAsync(post);
-                return Json(new { success = true, message = "Tepki kaldırıldı." });
+                    action = "removed";
             }
             else
             {
+                    // Farklı tip reaksiyon - güncelle
+                    Console.WriteLine("AddReaction: Farklı tip reaksiyon - güncelleniyor");
                 existingReaction.IsLike = model.IsLike;
+                    action = "updated";
             }
         }
         else
         {
+                // Yeni reaksiyon ekle
+                Console.WriteLine("AddReaction: Yeni reaksiyon ekleniyor");
             post.Reactions.Add(new PostReaction
             {
                 PostId = model.PostId,
@@ -583,10 +806,109 @@ public class PostsController : Controller
                 IsLike = model.IsLike,
                 CreatedAt = DateTime.UtcNow
             });
+                action = "added";
         }
 
+            // Değişiklikleri kaydet
+            Console.WriteLine("AddReaction: Değişiklikler kaydediliyor");
         await _postRepository.UpdateAsync(post);
-        return Json(new { success = true, message = model.IsLike ? "Yazı beğenildi." : "Yazı beğenilmedi." });
+            
+            // Değişikliklerden sonra postu tekrar çek ve sayıları güncelle
+            post = await _postRepository.GetByIdAsync(model.PostId);
+            
+            // Gerçek sayıları hesapla
+            int likesCount = post.Reactions.Count(r => r.IsLike);
+            int dislikesCount = post.Reactions.Count(r => !r.IsLike);
+            
+            Console.WriteLine($"AddReaction: İşlem tamamlandı - Beğeni: {likesCount}, Beğenmeme: {dislikesCount}");
+
+            return Json(new { 
+                success = true, 
+                message = model.IsLike ? "Yazı beğenildi." : "Yazı beğenilmedi.", 
+                action,
+                likesCount,
+                dislikesCount
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AddReaction error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return Json(new { success = false, message = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin." });
+        }
+    }
+
+    [Authorize]
+    [HttpPost]
+    [Route("/Posts/DeleteComment")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteComment([FromBody] CommentIdViewModel model)
+    {
+        try
+        {
+            if (model == null || model.CommentId <= 0)
+            {
+                return Json(new { success = false, message = "Geçersiz istek." });
+            }
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            Console.WriteLine($"DeleteComment: Kullanıcı ID: {userId}, Yorum ID: {model.CommentId}");
+            
+            var comment = await _commentRepository.GetByIdAsync(model.CommentId);
+
+            if (comment == null)
+            {
+                Console.WriteLine("DeleteComment: Yorum bulunamadı");
+                return Json(new { success = false, message = "Yorum bulunamadı." });
+            }
+
+            // Yorum kullanıcıya ait mi kontrol et
+            if (comment.UserId != userId && !User.IsInRole("Admin"))
+            {
+                Console.WriteLine("DeleteComment: Kullanıcının silme yetkisi yok");
+                return Json(new { success = false, message = "Bu yorumu silme yetkiniz bulunmuyor." });
+            }
+
+            // Ebeveyn yorum ID'sini sakla
+            var parentCommentId = comment.ParentCommentId;
+            
+            Console.WriteLine($"DeleteComment: Yorum siliniyor, ParentID: {parentCommentId}");
+            
+            // Yorumu sil
+            await _commentRepository.DeleteAsync(comment);
+            
+            Console.WriteLine("DeleteComment: Yorum başarıyla silindi");
+
+            return Json(new { 
+                success = true, 
+                message = "Yorum başarıyla silindi.",
+                parentCommentId = parentCommentId
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DeleteComment error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return Json(new { success = false, message = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin." });
+        }
+    }
+
+    public class CommentViewModel
+    {
+        public int PostId { get; set; }
+        public string? Content { get; set; }
+        public int? ParentCommentId { get; set; }
+    }
+
+    public class CommentIdViewModel
+    {
+        public int CommentId { get; set; }
+    }
+
+    public class CommentReactionViewModel
+    {
+        public int CommentId { get; set; }
+        public bool IsLike { get; set; }
     }
 
     public class ReactionViewModel

@@ -5,6 +5,21 @@
     ViewData["Title"] = "Yeni Blog Yazısı";
 }
 
+@section Styles {
+    <style>
+        /* Debug için form sınırlarını göster */
+        #blogPostForm {
+            position: relative;
+        }
+        .btn-debug {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+}
+
 <div class="container mt-4">
     <div class="row">
         <div class="col-lg-9 mx-auto">
@@ -16,8 +31,12 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <form asp-action="Create" method="post" enctype="multipart/form-data" id="blogPostForm">
+                    <form asp-controller="Posts" asp-action="Create" method="post" enctype="multipart/form-data" id="blogPostForm">
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                        @Html.AntiForgeryToken()
+
+                        <!-- Hidden debug buton -->
+                        <button type="button" id="debugFormBtn" class="btn btn-sm btn-warning btn-debug d-none">Debug</button>
 
                         <ul class="nav nav-tabs mb-4" id="blogTabs" role="tablist">
                             <li class="nav-item" role="presentation">
@@ -46,7 +65,7 @@
                             <!-- İçerik Sekmesi -->
                             <div class="tab-pane fade show active" id="content" role="tabpanel" aria-labelledby="content-tab">
                                 <div class="mb-4">
-                                    <label asp-for="Title" class="form-label fw-bold">
+                                    <label for="Title" class="form-label fw-bold">
                                         <i class="bi bi-type-h1"></i> @Html.DisplayNameFor(model => model.Title)
                                     </label>
                                     <input asp-for="Title" class="form-control form-control-lg" placeholder="Etkileyici bir başlık yazın..." required />
@@ -55,7 +74,7 @@
                                 </div>
 
                                 <div class="mb-4">
-                                    <label asp-for="Description" class="form-label fw-bold">
+                                    <label for="Description" class="form-label fw-bold">
                                         <i class="bi bi-text-paragraph"></i> @Html.DisplayNameFor(model => model.Description)
                                     </label>
                                     <textarea asp-for="Description" class="form-control" rows="3" placeholder="İçeriğinizin kısa bir özetini yazın..."></textarea>
@@ -64,10 +83,10 @@
                                 </div>
 
                                 <div class="mb-4">
-                                    <label asp-for="Content" class="form-label fw-bold">
+                                    <label for="Content" class="form-label fw-bold">
                                         <i class="bi bi-file-richtext"></i> @Html.DisplayNameFor(model => model.Content)
                                     </label>
-                                    <textarea asp-for="Content" id="editor" class="form-control" rows="10" required></textarea>
+                                    <textarea asp-for="Content" id="Content" class="form-control" rows="10" required data-val="true" data-val-required="İçerik alanı zorunludur"></textarea>
                                     <span asp-validation-for="Content" class="text-danger"></span>
                                 </div>
                             </div>
@@ -77,10 +96,10 @@
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="mb-4">
-                                            <label asp-for="ImageFile" class="form-label fw-bold">
+                                            <label for="ImageFile" class="form-label fw-bold">
                                                 <i class="bi bi-image"></i> @Html.DisplayNameFor(model => model.ImageFile)
                                             </label>
-                                            <input asp-for="ImageFile" class="form-control" type="file" accept="image/*" id="imageInput" />
+                                            <input asp-for="ImageFile" class="form-control" type="file" accept="image/*" id="ImageFile" />
                                             <span asp-validation-for="ImageFile" class="text-danger"></span>
                                             <div class="form-text">Yüksek kaliteli bir kapak resmi kullanın (önerilen boyut: 1200x630px).</div>
                                         </div>
@@ -91,10 +110,10 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-4">
-                                            <label asp-for="VideoUrl" class="form-label fw-bold">
+                                            <label for="VideoUrl" class="form-label fw-bold">
                                                 <i class="bi bi-youtube"></i> @Html.DisplayNameFor(model => model.VideoUrl)
                                             </label>
-                                            <input asp-for="VideoUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=..." id="videoInput" />
+                                            <input asp-for="VideoUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=..." id="VideoUrl" />
                                             <span asp-validation-for="VideoUrl" class="text-danger"></span>
                                             <div class="form-text">YouTube video ID veya tam URL girin (ör: https://www.youtube.com/watch?v=abcdef123).</div>
                                         </div>
@@ -113,12 +132,12 @@
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="mb-4">
-                                            <label asp-for="Url" class="form-label fw-bold">
+                                            <label for="Url" class="form-label fw-bold">
                                                 <i class="bi bi-link-45deg"></i> @Html.DisplayNameFor(model => model.Url)
                                             </label>
                                             <div class="input-group">
                                                 <span class="input-group-text">yoursite.com/posts/</span>
-                                                <input asp-for="Url" class="form-control" placeholder="baslık-ornegi" id="urlSlug" />
+                                                <input asp-for="Url" class="form-control" placeholder="baslık-ornegi" id="Url" />
                                             </div>
                                             <span asp-validation-for="Url" class="text-danger"></span>
                                             <div class="form-text">Boş bırakırsanız otomatik olarak başlıktan oluşturulacaktır.</div>
@@ -126,20 +145,20 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-4">
-                                            <label asp-for="Keywords" class="form-label fw-bold">
+                                            <label for="Keywords" class="form-label fw-bold">
                                                 <i class="bi bi-tags"></i> @Html.DisplayNameFor(model => model.Keywords)
                                             </label>
-                                            <input asp-for="Keywords" class="form-control" placeholder="blog,yazılım,teknoloji" />
+                                            <input asp-for="Keywords" class="form-control" placeholder="blog,yazılım,teknoloji" id="Keywords" />
                                             <span asp-validation-for="Keywords" class="text-danger"></span>
                                             <div class="form-text">Anahtar kelimeleri virgülle ayırın. Google için artık çok önemli değil ancak bazı arama motorları hala kullanıyor.</div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="mb-4">
-                                    <label asp-for="ReadTime" class="form-label fw-bold">
+                                    <label for="ReadTime" class="form-label fw-bold">
                                         <i class="bi bi-clock"></i> @Html.DisplayNameFor(model => model.ReadTime)
                                     </label>
-                                    <input asp-for="ReadTime" class="form-control" type="number" min="1" max="60" placeholder="5" />
+                                    <input asp-for="ReadTime" class="form-control" type="number" min="1" max="60" placeholder="5" id="ReadTime" />
                                     <span asp-validation-for="ReadTime" class="text-danger"></span>
                                     <div class="form-text">İçeriğinizi okumak için gereken tahmini süre (dakika). Boş bırakırsanız otomatik hesaplanacaktır.</div>
                                 </div>
@@ -162,24 +181,13 @@
                                 <div class="row mb-4">
                                     <div class="col-md-6">
                                         <div class="mb-4">
-                                            <label asp-for="Status" class="form-label fw-bold">
-                                                <i class="bi bi-calendar-check"></i> @Html.DisplayNameFor(model => model.Status)
+                                            <label for="statusSelect" class="form-label fw-bold">
+                                                <i class="bi bi-calendar-check"></i> Yayın Durumu
                                             </label>
-                                            <select asp-for="Status" class="form-select" id="status">
-                                                <option value="@PostStatus.Draft">Taslak (sadece siz görebilirsiniz)</option>
-                                                <option value="@PostStatus.Published">Hemen Yayınla</option>
-                                                <option value="@PostStatus.Scheduled">İleri Tarihte Yayınla</option>
+                                            <select class="form-select" id="statusSelect" name="statusSelect">
+                                                <option value="draft">Taslak (sadece siz görebilirsiniz)</option>
+                                                <option value="publish">Hemen Yayınla</option>
                                             </select>
-                                            <span asp-validation-for="Status" class="text-danger"></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-4" id="scheduleBlock" style="display: none;">
-                                            <label asp-for="ScheduledPublishTime" class="form-label fw-bold">
-                                                <i class="bi bi-calendar2-check"></i> @Html.DisplayNameFor(model => model.ScheduledPublishTime)
-                                            </label>
-                                            <input asp-for="ScheduledPublishTime" class="form-control" type="datetime-local" />
-                                            <span asp-validation-for="ScheduledPublishTime" class="text-danger"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -205,7 +213,7 @@
                                 </div>
 
                                 <div class="mb-4">
-                                    <label asp-for="SelectedTagIds" class="form-label fw-bold">
+                                    <label for="SelectedTagIds" class="form-label fw-bold">
                                         <i class="bi bi-tags"></i> @Html.DisplayNameFor(model => model.SelectedTagIds)
                                     </label>
                                     <div class="row g-2">
@@ -215,7 +223,7 @@
                                                 <div class="form-check">
                                                     <input type="checkbox" name="SelectedTagIds" value="@tag.TagId" class="form-check-input" id="tag-@tag.TagId" />
                                                     <label class="form-check-label" for="tag-@tag.TagId">
-                                                        <span class="badge bg-@(GetTagColorClass(tag))">@tag.Name</span>
+                                                        <span class="badge bg-@GetTagColorClass(tag)">@tag.Name</span>
                                                     </label>
                                                 </div>
                                             </div>
@@ -226,17 +234,17 @@
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between mt-4">
                             <div>
-                                <button type="submit" class="btn btn-lg btn-primary" id="submitButton" name="directPublish" value="false">
-                                    <i class="bi bi-save"></i> Kaydet
-                                </button>
                                 <a asp-action="Index" asp-controller="Posts" class="btn btn-outline-secondary">
                                     <i class="bi bi-arrow-left"></i> İptal
                                 </a>
                             </div>
                             <div>
-                                <button type="submit" class="btn btn-lg btn-success" name="directPublish" value="true">
+                                <button type="submit" class="btn btn-lg btn-primary me-2" name="action" value="draft">
+                                    <i class="bi bi-save"></i> Taslak Olarak Kaydet
+                                </button>
+                                <button type="submit" class="btn btn-lg btn-success" name="action" value="publish">
                                     <i class="bi bi-check-circle"></i> Hemen Yayınla
                                 </button>
                             </div>
@@ -312,121 +320,142 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.tiny.cloud/1/qagffr3pkuv17a8on1afax661irst1hbr4e6tbv888sz91jc/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Rich Text Editor (TinyMCE) Ayarları
-            tinymce.init({
-                selector: '#editor',
-                plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount quickbars preview',
-                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat | preview',
-                quickbars_selection_toolbar: 'bold italic | quicklink h2 h3 blockquote',
-                menubar: 'file edit view insert format tools table help',
-                toolbar_mode: 'sliding',
-                height: 500,
-                branding: false,
-                automatic_uploads: true,
-                paste_data_images: true,
-                relative_urls: false,
-                remove_script_host: false,
-                convert_urls: true,
-                promotion: false,
-                images_upload_handler: function (blobInfo, success, failure) {
-                    // Gerçek bir uygulamada, buraya resim yükleme API'si entegre edilmelidir
-                    setTimeout(function () {
-                        // Sahte bir URL döndürüyoruz, gerçek uygulamada resim API'sinden gelen URL kullanılır
-                        success('/img/posts/sample.jpg');
-                    }, 2000);
-                },
-                setup: function (editor) {
-                    editor.on('Change', function (e) {
-                        // İçerik değiştiğinde okuma süresini hesapla
-                        calculateReadTime();
-                    });
-                }
-            });
-
-            // Taslak olarak kaydetme butonu
-            document.getElementById('saveAsDraftBtn').addEventListener('click', function() {
-                document.getElementById('isDraftSwitch').checked = true;
-                document.getElementById('blogPostForm').submit();
-            });
-
-            // Yayın durumu değiştiğinde zamanlama bloğunu göster/gizle
-            const statusSelect = document.getElementById('status');
-            const scheduleBlock = document.getElementById('scheduleBlock');
-
-            statusSelect.addEventListener('change', function() {
-                scheduleBlock.style.display = this.value === '2' ? 'block' : 'none';
-            });
+            console.log("Blog yazısı oluşturma sayfası yüklendi");
+            
+            // CKEditor Başlatma - Hata veren araç çubuğu yapılandırması düzeltildi
+            ClassicEditor
+                .create(document.querySelector('#Content'), {
+                    toolbar: ['undo', 'redo', 'heading', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
+                    language: 'tr'
+                })
+                .then(editor => {
+                    console.log('CKEditor başarıyla yüklendi:', editor);
+                    window.editor = editor;
+                    
+                    // CKEditor'ın oluşturduğu içerik div'ini erişilebilir yap
+                    const editorElement = document.querySelector('.ck-editor__editable');
+                    if (editorElement) {
+                        editorElement.setAttribute('tabindex', '0');
+                        editorElement.setAttribute('aria-label', 'İçerik editörü');
+                    }
+                })
+                .catch(error => {
+                    console.error('CKEditor yüklenirken hata oluştu:', error);
+                });
 
             // Resim önizleme
-            const imageInput = document.getElementById('imageInput');
+            const imageInput = document.getElementById('ImageFile');
             const imagePreview = document.getElementById('imagePreview');
             const previewImg = document.getElementById('previewImg');
 
-            imageInput.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    const reader = new FileReader();
-                    
-                    reader.onload = function(e) {
-                        previewImg.src = e.target.result;
-                        imagePreview.classList.remove('d-none');
+            if (imageInput) {
+                imageInput.addEventListener('change', function() {
+                    console.log("Resim yüklendi, önizleme oluşturuluyor");
+                    if (this.files && this.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            previewImg.src = e.target.result;
+                            imagePreview.classList.remove('d-none');
+                        }
+                        reader.readAsDataURL(this.files[0]);
+                    } else {
+                        imagePreview.classList.add('d-none');
                     }
-                    
-                    reader.readAsDataURL(this.files[0]);
-                } else {
-                    imagePreview.classList.add('d-none');
-                }
-            });
+                });
+            }
 
-            // YouTube Video Önizleme
-            const videoInput = document.getElementById('videoInput');
+            // YouTube Video Önizleme - videoInput ID'si düzeltildi
+            const videoInput = document.getElementById('VideoUrl');
             const videoPreview = document.getElementById('videoPreview');
             const youtubeEmbed = document.getElementById('youtubeEmbed');
 
-            videoInput.addEventListener('input', function() {
-                const videoUrl = this.value.trim();
-                if (videoUrl) {
-                    const videoId = extractYouTubeId(videoUrl);
-                    if (videoId) {
-                        youtubeEmbed.src = `https://www.youtube.com/embed/${videoId}`;
-                        videoPreview.classList.remove('d-none');
+            if (videoInput) {
+                videoInput.addEventListener('input', function() {
+                    console.log("Video URL girildi, önizleme oluşturuluyor");
+                    const videoUrl = this.value.trim();
+                    if (videoUrl) {
+                        const videoId = extractYouTubeId(videoUrl);
+                        if (videoId) {
+                            youtubeEmbed.src = `https://www.youtube.com/embed/${videoId}`;
+                            videoPreview.classList.remove('d-none');
+                        } else {
+                            videoPreview.classList.add('d-none');
+                        }
                     } else {
                         videoPreview.classList.add('d-none');
                     }
-                } else {
-                    videoPreview.classList.add('d-none');
-                }
-            });
+                });
+            }
 
-            // SEO Önizlemesi güncelleme
+            // SEO Önizlemesi güncelleme - urlSlug ID'si düzeltildi
             const titleInput = document.getElementById('Title');
             const descriptionInput = document.getElementById('Description');
-            const urlInput = document.getElementById('urlSlug');
+            const urlInput = document.getElementById('Url');
             const seoPreviewTitle = document.getElementById('seoPreviewTitle');
             const seoPreviewDescription = document.getElementById('seoPreviewDescription');
             const seoPreviewUrl = document.getElementById('seoPreviewUrl');
 
             function updateSeoPreview() {
-                seoPreviewTitle.textContent = titleInput.value || 'Yazı Başlığı';
-                seoPreviewDescription.textContent = descriptionInput.value || 'İçerik açıklaması burada görünecektir...';
-                
-                const slug = urlInput.value || (titleInput.value ? convertToSlug(titleInput.value) : 'yazı-başlığı');
-                seoPreviewUrl.textContent = `www.yoursite.com/posts/${slug}`;
+                if (titleInput && descriptionInput && urlInput && seoPreviewTitle && seoPreviewDescription && seoPreviewUrl) {
+                    seoPreviewTitle.textContent = titleInput.value || 'Yazı Başlığı';
+                    seoPreviewDescription.textContent = descriptionInput.value || 'İçerik açıklaması burada görünecektir...';
+                    
+                    const slug = urlInput.value || (titleInput.value ? convertToSlug(titleInput.value) : 'yazı-başlığı');
+                    seoPreviewUrl.textContent = `www.yoursite.com/posts/${slug}`;
+                }
             }
 
-            titleInput.addEventListener('input', updateSeoPreview);
-            descriptionInput.addEventListener('input', updateSeoPreview);
-            urlInput.addEventListener('input', updateSeoPreview);
+            if (titleInput && descriptionInput && urlInput) {
+                titleInput.addEventListener('input', updateSeoPreview);
+                descriptionInput.addEventListener('input', updateSeoPreview);
+                urlInput.addEventListener('input', updateSeoPreview);
 
-            // Başlık değiştiğinde otomatik slug oluşturma
-            titleInput.addEventListener('blur', function() {
-                if (!urlInput.value && this.value) {
-                    urlInput.value = convertToSlug(this.value);
-                    updateSeoPreview();
+                // Başlık değiştiğinde otomatik slug oluşturma
+                titleInput.addEventListener('blur', function() {
+                    console.log("Başlık alanından çıkıldı, slug oluşturuluyor");
+                    if (!urlInput.value && this.value) {
+                        urlInput.value = convertToSlug(this.value);
+                        updateSeoPreview();
+                    }
+                });
+            }
+
+            // Okuma süresi hesaplama - CKEditor için
+            function calculateReadTime() {
+                try {
+                    if (window.editor) {
+                        const content = window.editor.getData();
+                        // HTML tagları kaldır
+                        const textContent = content.replace(/<[^>]*>/g, '');
+                        console.log("İçerik değişti, okuma süresi hesaplanıyor");
+                        const wordCount = textContent.split(/\s+/).length;
+                        // Ortalama okuma hızı: dakikada 200 kelime
+                        const readTimeMinutes = Math.ceil(wordCount / 200);
+                        // ReadTime input'unu güncelle (eğer kullanıcı manuel girdiyse değiştirme)
+                        const readTimeInput = document.getElementById('ReadTime');
+                        if (!readTimeInput.value || readTimeInput.value === '0') {
+                            readTimeInput.value = readTimeMinutes > 0 ? readTimeMinutes : 1;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Okuma süresi hesaplanırken hata oluştu:", e);
                 }
-            });
+            }
+
+            // CKEditor içeriği değiştiğinde okuma süresini hesapla
+            if (window.editor) {
+                // Bu kısım editör yüklendikten sonra çalışacak
+                setTimeout(() => {
+                    if (window.editor) {
+                        window.editor.model.document.on('change:data', calculateReadTime);
+                    }
+                }, 1000);
+            }
 
             // YouTube ID çıkarma yardımcı fonksiyonu
             function extractYouTubeId(url) {
@@ -449,20 +478,6 @@
                     .replace(/[ç]/g, 'c');
             }
 
-            // Okuma süresi hesaplama
-            function calculateReadTime() {
-                // Editor içeriğini al (TinyMCE dışarıdan erişilemiyor)
-                const content = tinymce.get('editor').getContent({format: 'text'});
-                const wordCount = content.split(/\s+/).length;
-                // Ortalama okuma hızı: dakikada 200 kelime
-                const readTimeMinutes = Math.ceil(wordCount / 200);
-                // ReadTime input'unu güncelle (eğer kullanıcı manuel girdiyse değiştirme)
-                const readTimeInput = document.getElementById('ReadTime');
-                if (!readTimeInput.value || readTimeInput.value === '0') {
-                    readTimeInput.value = readTimeMinutes > 0 ? readTimeMinutes : 1;
-                }
-            }
-
             // Sayfa yüklendiğinde SEO önizlemesini başlat
             updateSeoPreview();
         });
@@ -482,9 +497,9 @@
                 1 => "secondary",
                 2 => "success",
                 3 => "danger",
-                4 => "warning",
+                4 => "warning", 
                 5 => "info",
-                6 => "light", 
+                6 => "orange",
                 7 => "dark",
                 _ => "secondary"
             };
