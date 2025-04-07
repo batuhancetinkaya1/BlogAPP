@@ -1,0 +1,43 @@
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <ul class="navbar-nav">
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person"></i> @User.Identity?.Name
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <li>
+                    <a class="dropdown-item" asp-controller="Users" asp-action="Profile" asp-route-username="@User.Identity?.Name">
+                        <i class="bi bi-person-circle"></i> Profil Sayfam
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-controller="Users" asp-action="MyPosts">
+                        <i class="bi bi-file-earmark-text"></i> Yazılarım
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" asp-controller="Users" asp-action="LogoutConfirm">
+                        <i class="bi bi-box-arrow-right"></i> Çıkış Yap
+                    </a>
+                </li>
+            </ul>
+        </li>
+    </ul>
+}
+else
+{
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link" asp-controller="Account" asp-action="Login">
+                <i class="bi bi-box-arrow-in-right"></i> Giriş Yap
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-controller="Account" asp-action="Register">
+                <i class="bi bi-person-plus"></i> Kayıt Ol
+            </a>
+        </li>
+    </ul>
+} 

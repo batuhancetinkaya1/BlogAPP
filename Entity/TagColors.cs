@@ -8,6 +8,6 @@ public enum TagColors
     Danger,
     Warning,
     Info,
-    Light,
+    Orange,
     Dark
 } 

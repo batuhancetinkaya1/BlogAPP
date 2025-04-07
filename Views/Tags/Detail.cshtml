@@ -1,0 +1,63 @@
+@model BlogApp.Models.ViewModels.PostListViewModel
+@using BlogApp.Entity
+
+@{
+    var tag = ViewBag.Tag as BlogApp.Entity.Tag;
+    ViewData["Title"] = $"{tag?.Name} Etiketine Sahip Yazılar";
+}
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1><span class="badge bg-@tag?.Color?.ToString().ToLower()">@tag?.Name</span> Etiketine Sahip Yazılar</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            @if (Model.Posts.Any())
+            {
+                foreach (var post in Model.Posts)
+                {
+                    <div class="card mb-4">
+                        @if (!string.IsNullOrEmpty(post.Image))
+                        {
+                            <img src="@post.Image" class="card-img-top" alt="@post.Title">
+                        }
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <a href="/posts/@post.Url" class="text-decoration-none text-dark">@post.Title</a>
+                            </h5>
+                            <p class="card-text">@post.Description</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="btn-group">
+                                    <a href="/posts/@post.Url" class="btn btn-sm btn-outline-primary">Devamını Oku</a>
+                                </div>
+                                <small class="text-muted">
+                                    <a href="/users/@post.User.UserName" class="text-decoration-none">
+                                        @post.User.UserName
+                                        @if (post.User.IsAdmin)
+                                        {
+                                            <i class="bi bi-patch-check-fill text-primary" title="Admin"></i>
+                                        }
+                                    </a>
+                                    | @post.PublishedOn?.ToLocalTime().ToString("dd MMM yyyy")
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    Bu etiket altında henüz blog yazısı bulunmamaktadır.
+                </div>
+            }
+        </div>
+        <div class="col-md-4">
+            @await Component.InvokeAsync("TagsMenu")
+            @await Component.InvokeAsync("NewPosts")
+        </div>
+    </div>
+</div> 

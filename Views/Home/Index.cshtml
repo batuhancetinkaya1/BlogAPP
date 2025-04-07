@@ -1,51 +1,238 @@
-@model IEnumerable<BlogApp.Entity.Post>
+@model BlogApp.Models.ViewModels.PostListViewModel
+@using BlogApp.Entity
 
 @{
-    ViewData["Title"] = "Ana Sayfa";
+    ViewData["Title"] = "BlogApp - Ana Sayfa";
 }
 
 <div class="container">
-    <div class="row">
+    <div class="row mb-4">
         <div class="col-md-8">
-            @foreach (var post in Model)
-            {
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <h2 class="card-title h4 mb-0">
-                                <a href="/posts/@post.Url" class="text-decoration-none">@post.Title</a>
-                            </h2>
-                        </div>
-
-                        @if (!string.IsNullOrEmpty(post.Description))
+            <div class="card border-0 bg-light mb-4 shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="display-6">Modern Blog Platformu</h1>
+                    <p class="lead mb-4">Düşüncelerinizi paylaşın, bilgiyi keşfedin ve bir topluluk içinde büyüyün</p>
+                    <div class="d-flex gap-2">
+                        @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <p class="card-text">@post.Description</p>
+                            <a href="/posts/create" class="btn btn-primary">
+                                <i class="bi bi-pencil-square me-2"></i>Yazı Oluştur
+                            </a>
                         }
+                        else
+                        {
+                            <a href="/account/register" class="btn btn-primary">
+                                <i class="bi bi-person-plus me-2"></i>Kayıt Ol
+                            </a>
+                        }
+                        <a href="/posts" class="btn btn-outline-dark">
+                            <i class="bi bi-book me-2"></i>Yazıları Keşfet
+                        </a>
+                    </div>
+                </div>
+            </div>
 
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="text-muted small">
-                                <i class="bi bi-person me-1"></i>@post.User.UserName
-                                <span class="mx-2">•</span>
-                                <i class="bi bi-calendar me-1"></i>
-                                <span>@post.PublishedOn?.ToString("dd.MM.yyyy HH:mm")</span>
-                                <span class="mx-2">•</span>
-                                <i class="bi bi-chat me-1"></i>@post.Comments.Count yorum
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h4">Blog Yazıları</h2>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        @(Model.CurrentSort switch
+                        {
+                            "title" => "Başlığa Göre",
+                            "likes" => "Beğeniye Göre",
+                            "comments" => "Yoruma Göre",
+                            _ => "Tarihe Göre"
+                        })
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                        <li><a class="dropdown-item @(Model.CurrentSort == "date" ? "active" : "")" 
+                            href="/?sort=date&page=@Model.CurrentPage">Tarihe Göre</a></li>
+                        <li><a class="dropdown-item @(Model.CurrentSort == "title" ? "active" : "")" 
+                            href="/?sort=title&page=@Model.CurrentPage">Başlığa Göre</a></li>
+                        <li><a class="dropdown-item @(Model.CurrentSort == "likes" ? "active" : "")" 
+                            href="/?sort=likes&page=@Model.CurrentPage">Beğeniye Göre</a></li>
+                        <li><a class="dropdown-item @(Model.CurrentSort == "comments" ? "active" : "")" 
+                            href="/?sort=comments&page=@Model.CurrentPage">Yoruma Göre</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            @if (Model.Posts.Any())
+            {
+                <div class="row row-cols-1 g-4">
+                    @foreach (var post in Model.Posts)
+                    {
+                        <div class="col">
+                            <div class="card shadow-sm h-100">
+                                <div class="row g-0">
+                                    <div class="col-md-4">
+                                        <img src="@(string.IsNullOrEmpty(post.Image) ? "/img/posts/default.jpg" : post.Image)" 
+                                            class="img-fluid rounded-start h-100" alt="@post.Title" 
+                                            style="object-fit: cover; width: 100%; height: 100%; min-height: 200px; margin-bottom: 2px;">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="card-body d-flex flex-column h-100">
+                                            <h3 class="card-title h5">
+                                                <a href="/posts/@post.Url" class="text-decoration-none">@post.Title</a>
+                                            </h3>
+                                            
+                                            @if (!string.IsNullOrEmpty(post.Description))
+                                            {
+                                                <p class="card-text">@(post.Description.Length > 150 ? post.Description.Substring(0, 150) + "..." : post.Description)</p>
+                                            }
+                                            
+                                            <div class="mt-auto">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="@(string.IsNullOrEmpty(post.User.Image) ? "/img/profiles/default.jpg" : post.User.Image)" 
+                                                            class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;" 
+                                                            alt="@post.User.UserName">
+                                                        <a href="/users/@post.User.UserName" class="text-muted small text-decoration-none">
+                                                            @post.User.UserName
+                                                            @if (post.User.IsAdmin)
+                                                            {
+                                                                <i class="bi bi-patch-check-fill text-primary" title="Admin"></i>
+                                                            }
+                                                        </a>
+                                                    </div>
+                                                    <small class="text-muted">@post.PublishedOn?.ToString("dd MMM yyyy")</small>
+                                                </div>
+                                                
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div class="text-muted small">
+                                                        <i class="bi bi-hand-thumbs-up me-1"></i>@post.Reactions.Count(r => r.IsLike)
+                                                        <span class="mx-1">•</span>
+                                                        <i class="bi bi-chat me-1"></i>@post.Comments.Count
+                                                        @if (post.ReadTime.HasValue && post.ReadTime > 0)
+                                                        {
+                                                            <span class="mx-1">•</span>
+                                                            <i class="bi bi-clock me-1"></i>@post.ReadTime <text>dk</text>;
+                                                        }
+                                                    </div>
+
+                                                    <div>
+                                                        @foreach (var tag in post.Tags.Take(2))
+                                                        {
+                                                            string tagColor = "secondary";
+                                                            if (tag.Color.HasValue)
+                                                            {
+                                                                switch(tag.Color.Value)
+                                                                {
+                                                                    case BlogApp.Entity.TagColors.Primary: tagColor = "primary"; break;
+                                                                    case BlogApp.Entity.TagColors.Success: tagColor = "success"; break;
+                                                                    case BlogApp.Entity.TagColors.Danger: tagColor = "danger"; break;
+                                                                    case BlogApp.Entity.TagColors.Warning: tagColor = "warning"; break;
+                                                                    case BlogApp.Entity.TagColors.Info: tagColor = "info"; break;
+                                                                    case BlogApp.Entity.TagColors.Orange: tagColor = "orange"; break;
+                                                                    case BlogApp.Entity.TagColors.Dark: tagColor = "dark"; break;
+                                                                    default: tagColor = "secondary"; break;
+                                                                }
+                                                            }
+                                                            
+                                                            string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
+                                                            bool isSpecialTag = tag.Name == "Entity Framework" || tag.Name == "CSS" || tag.Name == "React";
+                                                            string specialClass = "";
+                                                            
+                                                            if (tag.Name == "Entity Framework") specialClass = "entity-framework-tag";
+                                                            else if (tag.Name == "CSS") specialClass = "css-tag";
+                                                            else if (tag.Name == "React") specialClass = "react-tag";
+                                                            
+                                                            @if (isSpecialTag)
+                                                            {
+                                                                <a href="/tags/@tag.Url" class="badge text-dark text-decoration-none me-1 @specialClass" style="background-color: #0dcaf0 !important;">@tag.Name</a>
+                                                            }
+                                                            else if (tagColor == "info")
+                                                            {
+                                                                <a href="/tags/@tag.Url" class="badge text-dark text-decoration-none me-1" style="background-color: #0dcaf0 !important;">@tag.Name</a>
+                                                            }
+                                                            else
+                                                            {
+                                                                <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none me-1">@tag.Name</a>
+                                                            }
+                                                        }
+                                                        @if (post.Tags.Count > 2)
+                                                        {
+                                                            <span class="badge bg-light text-dark">+@(post.Tags.Count - 2)</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-
-                            <div>
-                                @foreach (var tag in post.Tags)
-                                {
-                                    <a href="/posts/tag/@tag.Url" class="badge bg-@tag.Color?.ToString().ToLower() text-decoration-none me-1">@tag.Name</a>
-                                }
+                        </div>
+                    }
+                </div>
+                
+                <!-- Pagination -->
+                @if (Model.TotalPages > 1)
+                {
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            @for (int i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                    <a class="page-link" href="/?page=@i&sort=@Model.CurrentSort">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    Henüz blog yazısı bulunmamaktadır.
+                </div>
+            }
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-3">
+                    <h3 class="h5 mb-3">BlogApp Topluluğu</h3>
+                    <div class="row g-2 text-center">
+                        <div class="col-4">
+                            <div class="bg-light rounded p-2">
+                                <div class="text-primary mb-1">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </div>
+                                <p class="h5 mb-0 fw-bold">@ViewBag.TotalPosts</p>
+                                <p class="small text-muted mb-0">Yazı</p>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-light rounded p-2">
+                                <div class="text-primary mb-1">
+                                    <i class="bi bi-people"></i>
+                                </div>
+                                <p class="h5 mb-0 fw-bold">@ViewBag.TotalUsers</p>
+                                <p class="small text-muted mb-0">Yazar</p>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-light rounded p-2">
+                                <div class="text-primary mb-1">
+                                    <i class="bi bi-tag"></i>
+                                </div>
+                                <p class="h5 mb-0 fw-bold">@ViewBag.TotalTags</p>
+                                <p class="small text-muted mb-0">Etiket</p>
                             </div>
                         </div>
                     </div>
                 </div>
-            }
-        </div>
-        <div class="col-md-4">
+            </div>
+            
             @await Component.InvokeAsync("TagsMenu")
+            @await Component.InvokeAsync("PopularPosts")
             @await Component.InvokeAsync("NewPosts")
         </div>
     </div>
-</div> 
+</div>
+
+@section Scripts {
+    <script>
+        // Herhangi bir JavaScript buraya eklenebilir
+    </script>
+} 

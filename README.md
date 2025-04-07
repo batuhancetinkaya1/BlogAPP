@@ -1,163 +1,148 @@
 # BlogApp
 
-BlogApp, ASP.NET Core MVC kullanılarak geliştirilmiş bir blog uygulamasıdır. Kullanıcılar blog yazıları oluşturabilir, yorum yapabilir ve etiketlerle içerikleri kategorize edebilir.
+BlogApp is a modern, feature-rich blog application built with ASP.NET Core. This project was developed as part of the Doğuş Teknoloji Bootcamp training program.
 
-## Proje Durumu
+## 📋 Features
 
-### Tamamlanan Özellikler
+### Core Features
+- User authentication and authorization with role-based access control
+- Blog post creation, editing, and management
+- Tag-based categorization with customizable colors
+- Comment system for posts
+- Reaction system (like/dislike) for posts
+- Responsive design for all devices
 
-- **Kullanıcı Yönetimi**
-  - Kayıt ve giriş sistemi
-  - Kullanıcı rolleri (Admin ve Normal Kullanıcı)
-  - Oturum yönetimi (Cookie Authentication)
+### Admin Features
+- Dashboard with statistics overview
+- User management (create, edit, delete)
+- Post management
+- Tag management
 
-- **Blog Yazıları**
-  - Blog yazısı oluşturma, düzenleme ve silme
-  - Blog yazılarını listeleme ve detay görüntüleme
-  - Blog yazılarını etiketlerle kategorize etme
-  - Blog yazılarını arama
+## 🛠️ Technology Stack
 
-- **Etiketler**
-  - Etiket oluşturma, düzenleme ve silme (sadece admin)
-  - Etiketlere göre blog yazılarını filtreleme
+- **Backend**: ASP.NET Core MVC
+- **Database**: SQLite with Entity Framework Core
+- **Frontend**: Bootstrap 5, jQuery, JavaScript
+- **Authentication**: Cookie-based authentication
+- **Styling**: CSS3, Bootstrap Icons
 
-- **Yorumlar**
-  - Blog yazılarına yorum yapma
-  - AJAX ile yorum ekleme
+## 🏗️ Project Structure
 
-- **Arayüz**
-  - Responsive tasarım (Bootstrap)
-  - Arama formu
-  - Kullanıcı dostu navigasyon
+The project follows a clean architecture approach:
 
-### Eksik Özellikler
+- **Entity**: Domain models (User, Post, Tag, Comment, PostReaction)
+- **Data**: Database context and repository implementations
+- **Models/ViewModels**: View-specific models for forms and display
+- **Controllers**: Request handling and business logic
+- **Views**: Razor views for the UI
+- **wwwroot**: Static assets (CSS, JS, images)
 
-- **Kullanıcı Profili**
-  - Profil düzenleme sayfası
-  - Profil resmi yükleme
-  - Şifre değiştirme
+## 🚀 Getting Started
 
-- **İçerik Yönetimi**
-  - Zengin metin editörü (WYSIWYG)
-  - Resim yükleme ve yönetimi
-  - İçerik önizleme
+### Prerequisites
 
-- **Sosyal Medya Entegrasyonu**
-  - Sosyal medya ile giriş
-  - Paylaşım butonları
+- .NET SDK 7.0 or later
+- Visual Studio 2022 or VS Code
 
-- **Bildirimler**
-  - Yorum bildirimleri
-  - E-posta bildirimleri
+### Installation
 
-## Teknolojiler
-
-- **Backend**
-  - ASP.NET Core 9.0
-  - Entity Framework Core 9.0
-  - SQLite veritabanı
-
-- **Frontend**
-  - Bootstrap 5
-  - jQuery
-  - AJAX
-
-- **Kimlik Doğrulama**
-  - Cookie Authentication
-  - SHA256 şifreleme
-
-## Proje Yapısı
-
-```
-BlogApp/
-├── Controllers/           # MVC Controller sınıfları
-├── Data/                  # Veri erişim katmanı
-│   ├── Abstract/          # Repository arayüzleri
-│   ├── Concrete/          # Repository implementasyonları
-│   └── Concrete/EfCore/   # Entity Framework Core yapılandırması
-├── Models/                # Model sınıfları
-│   ├── Entity/            # Veritabanı entity modelleri
-│   └── ViewModels/        # View modelleri
-├── Views/                 # Razor view dosyaları
-│   ├── Home/              # Ana sayfa view'ları
-│   ├── Posts/             # Blog yazıları view'ları
-│   ├── Tags/              # Etiketler view'ları
-│   ├── Users/             # Kullanıcı işlemleri view'ları
-│   └── Shared/            # Paylaşılan view'lar
-└── wwwroot/               # Statik dosyalar
-    ├── css/               # CSS dosyaları
-    ├── js/                # JavaScript dosyaları
-    └── lib/               # Kütüphane dosyaları
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/BlogApp.git
+cd BlogApp
 ```
 
-## Veritabanı
-
-Uygulama SQLite veritabanı kullanmaktadır. Veritabanı şeması aşağıdaki tablolardan oluşur:
-
-- **Users**: Kullanıcı bilgileri
-- **Posts**: Blog yazıları
-- **Tags**: Etiketler
-- **Comments**: Yorumlar
-
-## Varsayılan Kullanıcılar
-
-Uygulama ilk çalıştırıldığında aşağıdaki kullanıcılar otomatik olarak oluşturulur:
-
-### Admin Kullanıcısı
-- **Kullanıcı Adı**: admin
-- **E-posta**: admin@blogapp.com
-- **Şifre**: Admin123!
-
-### Normal Kullanıcı
-- **Kullanıcı Adı**: user
-- **E-posta**: user@blogapp.com
-- **Şifre**: User123!
-
-## Kurulum ve Çalıştırma
-
-1. .NET 9.0 SDK'yı yükleyin
-2. Projeyi klonlayın
-3. Proje dizinine gidin
-4. Aşağıdaki komutları çalıştırın:
-
+2. Restore dependencies:
 ```bash
 dotnet restore
+```
+
+3. Create and update the database:
+```bash
 dotnet ef migrations add InitialCreate
 dotnet ef database update
+```
+
+4. Run the application:
+```bash
 dotnet run
 ```
 
-5. Tarayıcınızda `https://localhost:5001` adresine gidin
+5. Navigate to `http://localhost:5000` in your browser.
 
-## Geliştirme Notları
+### Default Credentials
 
-- Entity Framework Core kullanılarak Code-First yaklaşımı ile veritabanı oluşturulmuştur
-- Repository pattern kullanılarak veri erişim katmanı soyutlanmıştır
-- Cookie Authentication kullanılarak kimlik doğrulama sağlanmıştır
-- AJAX kullanılarak yorum ekleme işlemi asenkron hale getirilmiştir
+- **Admin**: admin@example.com / admin123
+- **User**: user@example.com / user123
 
-## Yapılacaklar
+## 📝 Implemented Requirements
 
-- [ ] Kullanıcı profil sayfası oluşturma
-- [ ] Zengin metin editörü entegrasyonu
-- [ ] Resim yükleme ve yönetimi
-- [ ] Sosyal medya ile giriş
-- [ ] E-posta bildirimleri
-- [ ] Yorum bildirimleri
-- [ ] İçerik önizleme
-- [ ] Şifre sıfırlama
-- [ ] Kullanıcı yönetimi (admin paneli)
-- [ ] İstatistikler ve raporlama
+### User Management
+- [x] User registration and login system
+- [x] User profile management
+- [x] Role-based authorization (Admin, User)
+- [x] Password change functionality
+- [x] Profile picture upload
 
-## Katkıda Bulunma
+### Post Management
+- [x] Create, edit, and delete blog posts
+- [x] Rich text editor for post content
+- [x] Post tagging system
+- [x] Featured image upload
+- [x] Post reactions (likes/dislikes)
 
-1. Bu depoyu fork edin
-2. Yeni bir özellik dalı oluşturun (`git checkout -b feature/amazing-feature`)
-3. Değişikliklerinizi commit edin (`git commit -m 'Add some amazing feature'`)
-4. Dalınıza push edin (`git push origin feature/amazing-feature`)
-5. Bir Pull Request oluşturun
+### Comment System
+- [x] Add comments to posts
+- [x] View comments by timestamp
+- [x] User profile integration with comments
 
-## Lisans
+### Tag System
+- [x] Create and manage tags
+- [x] Color-coded tags with Bootstrap colors
+- [x] Tag-based post filtering
 
-Bu proje MIT lisansı altında lisanslanmıştır. Daha fazla bilgi için `LICENSE` dosyasına bakın. 
+### Admin Dashboard
+- [x] Statistics overview (users, posts, tags)
+- [x] Recent posts and users
+- [x] User management interface
+- [x] Post management interface
+- [x] Tag management interface
+
+## 🌟 Extra Features
+
+In addition to the basic requirements, the following extra features have been implemented:
+
+- [x] Responsive design with Bootstrap 5
+- [x] Optimized database queries with Entity Framework
+- [x] Advanced authentication with cookie-based auth
+- [x] SEO-friendly URLs for posts and tags
+- [x] Rich error handling and validation
+- [x] AJAX-based comments and reactions
+
+## 🔮 Future Enhancements
+
+The following features could be added in future iterations:
+
+- [ ] Social media sharing integration
+- [ ] Email notifications for comments and reactions
+- [ ] Advanced search functionality with filters
+- [ ] Post scheduling system
+- [ ] Analytics and post view tracking
+- [ ] Multi-language support
+- [ ] Dark/light theme toggle
+- [ ] API endpoints for mobile applications
+- [ ] Unit and integration tests
+- [ ] Docker containerization
+- [ ] CI/CD pipeline setup
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgements
+
+- Doğuş Teknoloji for the Bootcamp opportunity
+- All the mentors and instructors who provided guidance
+- Bootstrap for the responsive design components
+- The ASP.NET Core team for the excellent framework
 

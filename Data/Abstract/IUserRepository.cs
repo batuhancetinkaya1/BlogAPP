@@ -4,12 +4,12 @@ namespace BlogApp.Data.Abstract;
 
 public interface IUserRepository
 {
-    IQueryable<User> Users { get; }
-    User? GetById(int userId);
-    User? GetByEmail(string email);
-    void CreateUser(User user);
-    void EditUser(User user);
-    void UpdateUser(User user);
-    void DeleteUser(int userId);
-    Task<int> SaveChangesAsync();
+    Task<User> GetByIdAsync(int id);
+    Task<User> GetByEmailAsync(string email);
+    Task<User> GetByUsernameAsync(string username);
+    Task<List<User>> GetAllAsync();
+    Task AddAsync(User user);
+    Task UpdateAsync(User user);
+    Task DeleteAsync(User user);
+    Task<bool> ExistsAsync(string email);
 } 

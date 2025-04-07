@@ -1,197 +1,496 @@
 @model BlogApp.Models.PostCreateViewModel
+@using BlogApp.Entity
 
 @{
     ViewData["Title"] = "Yeni Blog Yazısı";
 }
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h2 class="card-title mb-4">@ViewData["Title"]</h2>
-                
-                <form asp-action="Create" method="post" enctype="multipart/form-data">
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
-                    
-                    <div class="form-floating mb-3">
-                        <input asp-for="Title" class="form-control" placeholder="Başlık" />
-                        <label asp-for="Title">Başlık</label>
-                        <span asp-validation-for="Title" class="text-danger"></span>
-                    </div>
-                    
-                    <div class="form-floating mb-3">
-                        <input asp-for="Url" class="form-control" placeholder="URL" />
-                        <label asp-for="Url">URL</label>
-                        <span asp-validation-for="Url" class="text-danger"></span>
-                        <div class="form-text">Boş bırakırsanız başlıktan otomatik oluşturulur.</div>
-                    </div>
-                    
-                    <div class="form-floating mb-3">
-                        <textarea asp-for="Description" class="form-control" placeholder="Açıklama" style="height: 100px"></textarea>
-                        <label asp-for="Description">Açıklama</label>
-                        <span asp-validation-for="Description" class="text-danger"></span>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label asp-for="Content" class="form-label">İçerik</label>
-                        <textarea asp-for="Content" id="editor"></textarea>
-                        <span asp-validation-for="Content" class="text-danger"></span>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label asp-for="ImageFile" class="form-label">Kapak Fotoğrafı</label>
-                        <input asp-for="ImageFile" class="form-control" accept="image/*" onchange="previewImage(this)" />
-                        <span asp-validation-for="ImageFile" class="text-danger"></span>
-                        <img id="imagePreview" class="mt-2 rounded d-none" style="max-width: 300px;" />
-                    </div>
-                    
-                    <div class="form-check mb-3">
-                        <input asp-for="IsActive" class="form-check-input" />
-                        <label asp-for="IsActive" class="form-check-label">Aktif</label>
-                    </div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-9 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">@ViewData["Title"]</h3>
+                    <a href="javascript:void(0)" class="text-white" data-bs-toggle="modal" data-bs-target="#blogTipsModal">
+                        <i class="bi bi-info-circle"></i> Yazım İpuçları
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create" method="post" enctype="multipart/form-data" id="blogPostForm">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
-                    <div class="form-check mb-3">
-                        <input asp-for="IsDraft" class="form-check-input" id="isDraft" onchange="toggleScheduling()" />
-                        <label asp-for="IsDraft" class="form-check-label">Taslak Olarak Kaydet</label>
-                    </div>
+                        <ul class="nav nav-tabs mb-4" id="blogTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab" aria-controls="content" aria-selected="true">
+                                    <i class="bi bi-pencil-square"></i> İçerik
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="media-tab" data-bs-toggle="tab" data-bs-target="#media" type="button" role="tab" aria-controls="media" aria-selected="false">
+                                    <i class="bi bi-image"></i> Medya
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="seo-tab" data-bs-toggle="tab" data-bs-target="#seo" type="button" role="tab" aria-controls="seo" aria-selected="false">
+                                    <i class="bi bi-search"></i> SEO
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false">
+                                    <i class="bi bi-gear"></i> Ayarlar
+                                </button>
+                            </li>
+                        </ul>
 
-                    <div id="schedulingOptions" class="mb-3 d-none">
-                        <div class="form-check mb-2">
-                            <input type="checkbox" class="form-check-input" id="enableScheduling" onchange="toggleScheduleDateTime()" />
-                            <label class="form-check-label" for="enableScheduling">Yayın Zamanını Planla</label>
-                        </div>
-                        <div id="scheduleDateTimeGroup" class="d-none">
-                            <div class="form-floating">
-                                <input asp-for="ScheduledPublishTime" type="datetime-local" class="form-control" id="scheduledDateTime" />
-                                <label asp-for="ScheduledPublishTime">Yayın Zamanı</label>
-                                <span asp-validation-for="ScheduledPublishTime" class="text-danger"></span>
+                        <div class="tab-content" id="blogTabsContent">
+                            <!-- İçerik Sekmesi -->
+                            <div class="tab-pane fade show active" id="content" role="tabpanel" aria-labelledby="content-tab">
+                                <div class="mb-4">
+                                    <label asp-for="Title" class="form-label fw-bold">
+                                        <i class="bi bi-type-h1"></i> @Html.DisplayNameFor(model => model.Title)
+                                    </label>
+                                    <input asp-for="Title" class="form-control form-control-lg" placeholder="Etkileyici bir başlık yazın..." required />
+                                    <span asp-validation-for="Title" class="text-danger"></span>
+                                    <div class="form-text">Başlığınız çarpıcı ve akılda kalıcı olmalıdır. SEO için 60 karakterden kısa tutun.</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label asp-for="Description" class="form-label fw-bold">
+                                        <i class="bi bi-text-paragraph"></i> @Html.DisplayNameFor(model => model.Description)
+                                    </label>
+                                    <textarea asp-for="Description" class="form-control" rows="3" placeholder="İçeriğinizin kısa bir özetini yazın..."></textarea>
+                                    <span asp-validation-for="Description" class="text-danger"></span>
+                                    <div class="form-text">Bu açıklama sosyal medya paylaşımlarında ve arama sonuçlarında görünecektir.</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label asp-for="Content" class="form-label fw-bold">
+                                        <i class="bi bi-file-richtext"></i> @Html.DisplayNameFor(model => model.Content)
+                                    </label>
+                                    <textarea asp-for="Content" id="editor" class="form-control" rows="10" required></textarea>
+                                    <span asp-validation-for="Content" class="text-danger"></span>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Etiketler</label>
-                        <div class="row">
-                            @foreach (var tag in ViewBag.Tags ?? new List<BlogApp.Entity.Tag>())
-                            {
-                                <div class="col-md-4 mb-2">
-                                    <div class="form-check">
-                                        <input type="checkbox" name="tagIds" value="@tag.TagId" class="form-check-input" />
-                                        <label class="form-check-label">@tag.Name</label>
+
+                            <!-- Medya Sekmesi -->
+                            <div class="tab-pane fade" id="media" role="tabpanel" aria-labelledby="media-tab">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-4">
+                                            <label asp-for="ImageFile" class="form-label fw-bold">
+                                                <i class="bi bi-image"></i> @Html.DisplayNameFor(model => model.ImageFile)
+                                            </label>
+                                            <input asp-for="ImageFile" class="form-control" type="file" accept="image/*" id="imageInput" />
+                                            <span asp-validation-for="ImageFile" class="text-danger"></span>
+                                            <div class="form-text">Yüksek kaliteli bir kapak resmi kullanın (önerilen boyut: 1200x630px).</div>
+                                        </div>
+                                        <div id="imagePreview" class="mb-4 d-none">
+                                            <p class="text-muted">Önizleme:</p>
+                                            <img id="previewImg" src="#" alt="Kapak resmi önizleme" class="img-fluid img-thumbnail" style="max-height: 300px" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-4">
+                                            <label asp-for="VideoUrl" class="form-label fw-bold">
+                                                <i class="bi bi-youtube"></i> @Html.DisplayNameFor(model => model.VideoUrl)
+                                            </label>
+                                            <input asp-for="VideoUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=..." id="videoInput" />
+                                            <span asp-validation-for="VideoUrl" class="text-danger"></span>
+                                            <div class="form-text">YouTube video ID veya tam URL girin (ör: https://www.youtube.com/watch?v=abcdef123).</div>
+                                        </div>
+                                        <div id="videoPreview" class="mb-4 d-none">
+                                            <p class="text-muted">Video Önizleme:</p>
+                                            <div class="ratio ratio-16x9">
+                                                <iframe id="youtubeEmbed" src="" allowfullscreen></iframe>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            }
+                            </div>
+
+                            <!-- SEO Sekmesi -->
+                            <div class="tab-pane fade" id="seo" role="tabpanel" aria-labelledby="seo-tab">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-4">
+                                            <label asp-for="Url" class="form-label fw-bold">
+                                                <i class="bi bi-link-45deg"></i> @Html.DisplayNameFor(model => model.Url)
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">yoursite.com/posts/</span>
+                                                <input asp-for="Url" class="form-control" placeholder="baslık-ornegi" id="urlSlug" />
+                                            </div>
+                                            <span asp-validation-for="Url" class="text-danger"></span>
+                                            <div class="form-text">Boş bırakırsanız otomatik olarak başlıktan oluşturulacaktır.</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-4">
+                                            <label asp-for="Keywords" class="form-label fw-bold">
+                                                <i class="bi bi-tags"></i> @Html.DisplayNameFor(model => model.Keywords)
+                                            </label>
+                                            <input asp-for="Keywords" class="form-control" placeholder="blog,yazılım,teknoloji" />
+                                            <span asp-validation-for="Keywords" class="text-danger"></span>
+                                            <div class="form-text">Anahtar kelimeleri virgülle ayırın. Google için artık çok önemli değil ancak bazı arama motorları hala kullanıyor.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <label asp-for="ReadTime" class="form-label fw-bold">
+                                        <i class="bi bi-clock"></i> @Html.DisplayNameFor(model => model.ReadTime)
+                                    </label>
+                                    <input asp-for="ReadTime" class="form-control" type="number" min="1" max="60" placeholder="5" />
+                                    <span asp-validation-for="ReadTime" class="text-danger"></span>
+                                    <div class="form-text">İçeriğinizi okumak için gereken tahmini süre (dakika). Boş bırakırsanız otomatik hesaplanacaktır.</div>
+                                </div>
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <i class="bi bi-eye"></i> Google Önizleme
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="seo-preview">
+                                            <h3 class="text-primary mb-1 fs-5" id="seoPreviewTitle">Yazı Başlığı</h3>
+                                            <div class="text-success small mb-1" id="seoPreviewUrl">www.yoursite.com/posts/yazı-başlığı</div>
+                                            <p class="small text-muted" id="seoPreviewDescription">İçerik açıklaması burada görünecektir...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ayarlar Sekmesi -->
+                            <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <div class="mb-4">
+                                            <label asp-for="Status" class="form-label fw-bold">
+                                                <i class="bi bi-calendar-check"></i> @Html.DisplayNameFor(model => model.Status)
+                                            </label>
+                                            <select asp-for="Status" class="form-select" id="status">
+                                                <option value="@PostStatus.Draft">Taslak (sadece siz görebilirsiniz)</option>
+                                                <option value="@PostStatus.Published">Hemen Yayınla</option>
+                                                <option value="@PostStatus.Scheduled">İleri Tarihte Yayınla</option>
+                                            </select>
+                                            <span asp-validation-for="Status" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-4" id="scheduleBlock" style="display: none;">
+                                            <label asp-for="ScheduledPublishTime" class="form-label fw-bold">
+                                                <i class="bi bi-calendar2-check"></i> @Html.DisplayNameFor(model => model.ScheduledPublishTime)
+                                            </label>
+                                            <input asp-for="ScheduledPublishTime" class="form-control" type="datetime-local" />
+                                            <span asp-validation-for="ScheduledPublishTime" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch" checked />
+                                        <label class="form-check-label fw-bold" for="isActiveSwitch">
+                                            <i class="bi bi-eye"></i> @Html.DisplayNameFor(model => model.IsActive)
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Pasif içerikler web sitenizde görüntülenmez.</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IsDraft" class="form-check-input" type="checkbox" id="isDraftSwitch" />
+                                        <label class="form-check-label fw-bold" for="isDraftSwitch">
+                                            <i class="bi bi-save"></i> @Html.DisplayNameFor(model => model.IsDraft)
+                                        </label>
+                                    </div>
+                                    <div class="form-text">İçerik üzerinde çalışmaya devam etmek için taslak olarak kaydedin.</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label asp-for="SelectedTagIds" class="form-label fw-bold">
+                                        <i class="bi bi-tags"></i> @Html.DisplayNameFor(model => model.SelectedTagIds)
+                                    </label>
+                                    <div class="row g-2">
+                                        @foreach (var tag in ViewBag.Tags)
+                                        {
+                                            <div class="col-md-3 col-6">
+                                                <div class="form-check">
+                                                    <input type="checkbox" name="SelectedTagIds" value="@tag.TagId" class="form-check-input" id="tag-@tag.TagId" />
+                                                    <label class="form-check-label" for="tag-@tag.TagId">
+                                                        <span class="badge bg-@(GetTagColorClass(tag))">@tag.Name</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="form-text">En az bir etiket seçmeniz tavsiye edilir.</div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <a asp-action="Index" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left me-2"></i>Geri Dön
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save me-2"></i>Kaydet
-                        </button>
-                    </div>
-                </form>
+
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <button type="submit" class="btn btn-lg btn-primary" id="submitButton" name="directPublish" value="false">
+                                    <i class="bi bi-save"></i> Kaydet
+                                </button>
+                                <a asp-action="Index" asp-controller="Posts" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> İptal
+                                </a>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-lg btn-success" name="directPublish" value="true">
+                                    <i class="bi bi-check-circle"></i> Hemen Yayınla
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Markdown Rehberi</h5>
-                <hr>
-                <p class="mb-2">Başlıklar:</p>
-                <pre class="bg-light p-2 rounded">
-# Başlık 1
-## Başlık 2
-### Başlık 3</pre>
-                
-                <p class="mb-2 mt-3">Listeler:</p>
-                <pre class="bg-light p-2 rounded">
-- Liste öğesi
-* Liste öğesi
-1. Numaralı liste</pre>
-                
-                <p class="mb-2 mt-3">Bağlantılar:</p>
-                <pre class="bg-light p-2 rounded">[Bağlantı metni](URL)</pre>
-                
-                <p class="mb-2 mt-3">Resimler:</p>
-                <pre class="bg-light p-2 rounded">![Alt metin](Resim URL)</pre>
-                
-                <p class="mb-2 mt-3">Kod blokları:</p>
-                <pre class="bg-light p-2 rounded">```
-Kod bloğu
-```</pre>
+</div>
+
+<!-- Blog Yazım İpuçları Modal -->
+<div class="modal fade" id="blogTipsModal" tabindex="-1" aria-labelledby="blogTipsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="blogTipsModalLabel">Blog Yazımı İpuçları</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold"><i class="bi bi-pencil"></i> İçerik Oluşturma</h6>
+                        <ul>
+                            <li>Net, anlaşılır başlıklar kullanın</li>
+                            <li>İlk paragrafta konuyu özetleyin</li>
+                            <li>Kısa paragraflar ve cümleler tercih edin</li>
+                            <li>Başlıkları hiyerarşik olarak kullanın (H2, H3)</li>
+                            <li>Örnekler ve gerçek hayat uygulamaları ekleyin</li>
+                            <li>İçeriği bölümler halinde yapılandırın</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold"><i class="bi bi-search"></i> SEO İpuçları</h6>
+                        <ul>
+                            <li>Anahtar kelimenizi başlıkta kullanın</li>
+                            <li>Meta açıklaması 150-160 karakter olmalı</li>
+                            <li>Alt etiketleri resimler için kullanın</li>
+                            <li>İçerikte dahili ve harici bağlantılar ekleyin</li>
+                            <li>Anahtar kelimeleri doğal şekilde yerleştirin</li>
+                            <li>Okunabilirliği SEO'dan önce düşünün</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold"><i class="bi bi-camera"></i> Görsel Kullanımı</h6>
+                        <ul>
+                            <li>Yüksek kaliteli görseller kullanın</li>
+                            <li>Telif hakkına saygı gösterin</li>
+                            <li>Resimlerinizi optimize edin</li>
+                            <li>İnfografikler ve diyagramlar ekleyin</li>
+                            <li>Metni destekleyici görseller seçin</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold"><i class="bi bi-people"></i> Okuyucuları Düşünün</h6>
+                        <ul>
+                            <li>Hedef kitlenize uygun ton kullanın</li>
+                            <li>Jargondan kaçının (gerekli değilse)</li>
+                            <li>Okuyucuya doğrudan hitap edin</li>
+                            <li>Etkileşimi teşvik eden sorular sorun</li>
+                            <li>Tarayarak okunabilir içerik oluşturun</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    <script src="https://cdn.tiny.cloud/1/qagffr3pkuv17a8on1afax661irst1hbr4e6tbv888sz91jc/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
     <script>
-        tinymce.init({
-            selector: '#editor',
-            plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
-            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
-            height: 500,
-            images_upload_url: '/Posts/UploadImage',
-            automatic_uploads: true,
-            images_reuse_filename: true,
-            language: 'tr',
-            skin: 'oxide',
-        });
-
-        function previewImage(input) {
-            const preview = document.getElementById('imagePreview');
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
-                    preview.classList.remove('d-none');
+        document.addEventListener('DOMContentLoaded', function () {
+            // Rich Text Editor (TinyMCE) Ayarları
+            tinymce.init({
+                selector: '#editor',
+                plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount quickbars preview',
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat | preview',
+                quickbars_selection_toolbar: 'bold italic | quicklink h2 h3 blockquote',
+                menubar: 'file edit view insert format tools table help',
+                toolbar_mode: 'sliding',
+                height: 500,
+                branding: false,
+                automatic_uploads: true,
+                paste_data_images: true,
+                relative_urls: false,
+                remove_script_host: false,
+                convert_urls: true,
+                promotion: false,
+                images_upload_handler: function (blobInfo, success, failure) {
+                    // Gerçek bir uygulamada, buraya resim yükleme API'si entegre edilmelidir
+                    setTimeout(function () {
+                        // Sahte bir URL döndürüyoruz, gerçek uygulamada resim API'sinden gelen URL kullanılır
+                        success('/img/posts/sample.jpg');
+                    }, 2000);
+                },
+                setup: function (editor) {
+                    editor.on('Change', function (e) {
+                        // İçerik değiştiğinde okuma süresini hesapla
+                        calculateReadTime();
+                    });
                 }
-                reader.readAsDataURL(input.files[0]);
-            } else {
-                preview.classList.add('d-none');
-                preview.src = '';
-            }
-        }
+            });
 
-        function toggleScheduling() {
-            const isDraft = document.getElementById('isDraft');
-            const schedulingOptions = document.getElementById('schedulingOptions');
-            const enableScheduling = document.getElementById('enableScheduling');
-            const scheduleDateTimeGroup = document.getElementById('scheduleDateTimeGroup');
-            
-            if (isDraft.checked) {
-                schedulingOptions.classList.add('d-none');
-                enableScheduling.checked = false;
-                scheduleDateTimeGroup.classList.add('d-none');
-            } else {
-                schedulingOptions.classList.remove('d-none');
-            }
-        }
+            // Taslak olarak kaydetme butonu
+            document.getElementById('saveAsDraftBtn').addEventListener('click', function() {
+                document.getElementById('isDraftSwitch').checked = true;
+                document.getElementById('blogPostForm').submit();
+            });
 
-        function toggleScheduleDateTime() {
-            const enableScheduling = document.getElementById('enableScheduling');
-            const scheduleDateTimeGroup = document.getElementById('scheduleDateTimeGroup');
-            
-            if (enableScheduling.checked) {
-                scheduleDateTimeGroup.classList.remove('d-none');
-            } else {
-                scheduleDateTimeGroup.classList.add('d-none');
-            }
-        }
+            // Yayın durumu değiştiğinde zamanlama bloğunu göster/gizle
+            const statusSelect = document.getElementById('status');
+            const scheduleBlock = document.getElementById('scheduleBlock');
 
-        // Set minimum date for scheduling to now
-        const scheduledDateTime = document.getElementById('scheduledDateTime');
-        if (scheduledDateTime) {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            scheduledDateTime.min = now.toISOString().slice(0, 16);
-        }
+            statusSelect.addEventListener('change', function() {
+                scheduleBlock.style.display = this.value === '2' ? 'block' : 'none';
+            });
+
+            // Resim önizleme
+            const imageInput = document.getElementById('imageInput');
+            const imagePreview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+
+            imageInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        previewImg.src = e.target.result;
+                        imagePreview.classList.remove('d-none');
+                    }
+                    
+                    reader.readAsDataURL(this.files[0]);
+                } else {
+                    imagePreview.classList.add('d-none');
+                }
+            });
+
+            // YouTube Video Önizleme
+            const videoInput = document.getElementById('videoInput');
+            const videoPreview = document.getElementById('videoPreview');
+            const youtubeEmbed = document.getElementById('youtubeEmbed');
+
+            videoInput.addEventListener('input', function() {
+                const videoUrl = this.value.trim();
+                if (videoUrl) {
+                    const videoId = extractYouTubeId(videoUrl);
+                    if (videoId) {
+                        youtubeEmbed.src = `https://www.youtube.com/embed/${videoId}`;
+                        videoPreview.classList.remove('d-none');
+                    } else {
+                        videoPreview.classList.add('d-none');
+                    }
+                } else {
+                    videoPreview.classList.add('d-none');
+                }
+            });
+
+            // SEO Önizlemesi güncelleme
+            const titleInput = document.getElementById('Title');
+            const descriptionInput = document.getElementById('Description');
+            const urlInput = document.getElementById('urlSlug');
+            const seoPreviewTitle = document.getElementById('seoPreviewTitle');
+            const seoPreviewDescription = document.getElementById('seoPreviewDescription');
+            const seoPreviewUrl = document.getElementById('seoPreviewUrl');
+
+            function updateSeoPreview() {
+                seoPreviewTitle.textContent = titleInput.value || 'Yazı Başlığı';
+                seoPreviewDescription.textContent = descriptionInput.value || 'İçerik açıklaması burada görünecektir...';
+                
+                const slug = urlInput.value || (titleInput.value ? convertToSlug(titleInput.value) : 'yazı-başlığı');
+                seoPreviewUrl.textContent = `www.yoursite.com/posts/${slug}`;
+            }
+
+            titleInput.addEventListener('input', updateSeoPreview);
+            descriptionInput.addEventListener('input', updateSeoPreview);
+            urlInput.addEventListener('input', updateSeoPreview);
+
+            // Başlık değiştiğinde otomatik slug oluşturma
+            titleInput.addEventListener('blur', function() {
+                if (!urlInput.value && this.value) {
+                    urlInput.value = convertToSlug(this.value);
+                    updateSeoPreview();
+                }
+            });
+
+            // YouTube ID çıkarma yardımcı fonksiyonu
+            function extractYouTubeId(url) {
+                const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+                const match = url.match(regExp);
+                return (match && match[7].length === 11) ? match[7] : null;
+            }
+
+            // String'i slug'a çevirme yardımcı fonksiyonu
+            function convertToSlug(text) {
+                return text
+                    .toLowerCase()
+                    .replace(/[^\w ]+/g, '')
+                    .replace(/ +/g, '-')
+                    .replace(/[ğ]/g, 'g')
+                    .replace(/[ü]/g, 'u')
+                    .replace(/[ş]/g, 's')
+                    .replace(/[ı]/g, 'i')
+                    .replace(/[ö]/g, 'o')
+                    .replace(/[ç]/g, 'c');
+            }
+
+            // Okuma süresi hesaplama
+            function calculateReadTime() {
+                // Editor içeriğini al (TinyMCE dışarıdan erişilemiyor)
+                const content = tinymce.get('editor').getContent({format: 'text'});
+                const wordCount = content.split(/\s+/).length;
+                // Ortalama okuma hızı: dakikada 200 kelime
+                const readTimeMinutes = Math.ceil(wordCount / 200);
+                // ReadTime input'unu güncelle (eğer kullanıcı manuel girdiyse değiştirme)
+                const readTimeInput = document.getElementById('ReadTime');
+                if (!readTimeInput.value || readTimeInput.value === '0') {
+                    readTimeInput.value = readTimeMinutes > 0 ? readTimeMinutes : 1;
+                }
+            }
+
+            // Sayfa yüklendiğinde SEO önizlemesini başlat
+            updateSeoPreview();
+        });
     </script>
+}
+
+@functions {
+    string GetTagColorClass(dynamic tag)
+    {
+        if (tag.Color == null) return "secondary";
+        
+        try {
+            int colorValue = Convert.ToInt32(tag.Color);
+            return colorValue switch
+            {
+                0 => "primary",
+                1 => "secondary",
+                2 => "success",
+                3 => "danger",
+                4 => "warning",
+                5 => "info",
+                6 => "light", 
+                7 => "dark",
+                _ => "secondary"
+            };
+        }
+        catch {
+            return "secondary";
+        }
+    }
 } 

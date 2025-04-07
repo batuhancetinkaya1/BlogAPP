@@ -14,7 +14,7 @@
     <!-- OpenGraph Meta Tags -->
     <meta property="og:title" content="@ViewData["Title"] - BlogApp" />
     <meta property="og:description" content="@ViewData["Description"] ?? "BlogApp - Teknoloji, programlama ve web geliştirme üzerine blog yazıları."" />
-    <meta property="og:image" content="@ViewData["OgImage"] ?? "/img/default-og.jpg"" />
+    <meta property="og:image" content="@ViewData["OgImage"] ?? "/img/posts/default.jpg"" />
     <meta property="og:url" content="@Context.Request.Scheme://@Context.Request.Host@Context.Request.Path" />
     <meta property="og:type" content="website" />
     
@@ -22,14 +22,156 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="@ViewData["Title"] - BlogApp" />
     <meta name="twitter:description" content="@ViewData["Description"] ?? "BlogApp - Teknoloji, programlama ve web geliştirme üzerine blog yazıları."" />
-    <meta name="twitter:image" content="@ViewData["OgImage"] ?? "/img/default-og.jpg"" />
+    <meta name="twitter:image" content="@ViewData["OgImage"] ?? "/img/posts/default.jpg"" />
     
     <link rel="canonical" href="@Context.Request.Scheme://@Context.Request.Host@Context.Request.Path" />
     <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/BlogApp.styles.css" asp-append-version="true" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        /* Genel tag renk tanımları */
+        .bg-orange, .badge.bg-orange {
+            background-color: #fd7e14 !important;
+        }
+        .text-orange {
+            color: #fd7e14 !important;
+        }
+        
+        /* Info rengi için özelleştirilmiş kurallar */
+        .bg-info,
+        .badge.bg-info,
+        span.bg-info,
+        a.bg-info,
+        .badge[class*="bg-info"],
+        a.badge[class*="bg-info"],
+        .badge-info,
+        a[class*="badge bg-info"],
+        a[class*="bg-info"] {
+            background-color: #0dcaf0 !important;
+            color: #000 !important;
+        }
+        
+        /* Özellikli tag'ler için custom görünüm */
+        .entity-framework-tag {
+            background-color: #0dcaf0 !important;
+            color: #000 !important;
+            display: inline-block;
+        }
+        
+        .css-tag {
+            background-color: #0dcaf0 !important;
+            color: #000 !important;
+            display: inline-block;
+        }
+        
+        .react-tag {
+            background-color: #0dcaf0 !important;
+            color: #000 !important;
+            display: inline-block;
+        }
+        
+        /* Entity Framework, CSS, React gibi terimlerin olduğu tag'ler için ek özellik */
+        a.badge.bg-info[href*="entity-framework"],
+        a.badge.bg-info[href*="css"],
+        a.badge.bg-info[href*="react"],
+        a.badge[href*="entity-framework"],
+        a.badge[href*="css"],
+        a.badge[href*="react"] {
+            background-color: #0dcaf0 !important;
+            color: #000 !important;
+        }
+        
+        /* Özel URL tag'leri için */
+        a[href*="/Tags/entity-framework"],
+        a[href*="/Tags/css"],
+        a[href*="/Tags/react"] {
+            background-color: #0dcaf0 !important;
+            color: #000 !important;
+        }
+        
+        /* İçerik eşleştirme */
+        .badge:contains("Entity Framework"),
+        .badge:contains("CSS"),
+        .badge:contains("React") {
+            background-color: #0dcaf0 !important;
+            color: #000 !important;
+        }
+        
+        .text-info, 
+        .badge.text-info, 
+        span.text-info, 
+        a.text-info {
+            color: #0dcaf0 !important;
+        }
+        
+        /* Etiketler için text rengi kontrolü */
+        .badge.bg-info, 
+        a.badge.bg-info, 
+        span.badge.bg-info {
+            color: #000 !important;
+        }
+        
+        .badge.bg-warning, 
+        a.badge.bg-warning, 
+        span.badge.bg-warning {
+            color: #000 !important;
+        }
+        
+        /* Tüm badge'lar için standart formatlar */
+        .badge {
+            padding: 0.45em 0.65em;
+            font-weight: 600;
+            border-radius: 0.375rem;
+        }
+        
+        /* Tag badge'ları */
+        a.badge {
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        
+        a.badge:hover {
+            opacity: 0.85;
+        }
+        
+        /* Her renk için açık tanımlama */
+        .badge.bg-primary { background-color: #0d6efd !important; color: #fff !important; }
+        .badge.bg-secondary { background-color: #6c757d !important; color: #fff !important; }
+        .badge.bg-success { background-color: #198754 !important; color: #fff !important; }
+        .badge.bg-danger { background-color: #dc3545 !important; color: #fff !important; }
+        .badge.bg-warning { background-color: #ffc107 !important; color: #000 !important; }
+        .badge.bg-info { background-color: #0dcaf0 !important; color: #000 !important; }
+        .badge.bg-dark { background-color: #212529 !important; color: #fff !important; }
+        .badge.bg-orange { background-color: #fd7e14 !important; color: #fff !important; }
+        .badge.bg-light { background-color: #f8f9fa !important; color: #000 !important; }
+        
+        /* Footer için küçültme */
+        .footer {
+            padding: 0.5rem 0;
+            margin-top: 2rem;
+        }
+        
+        /* Şifre input alanları için göz butonunu konumlandırma */
+        .password-container {
+            position: relative;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: #6c757d;
+        }
+        
+        .password-toggle:hover {
+            color: #212529;
+        }
+    </style>
     <script src="https://cdn.tiny.cloud/1/qagffr3pkuv17a8on1afax661irst1hbr4e6tbv888sz91jc/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
     <script>
         tinymce.init({
@@ -40,89 +182,68 @@
         });
     </script>
 </head>
-<body>
+<body class="d-flex flex-column min-vh-100">
     <header>
-        <nav class="navbar navbar-expand-sm navbar-dark bg-primary border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
             <div class="container">
-                <a class="navbar-brand" asp-controller="Home" asp-action="Index">BlogApp</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-pencil-square me-1"></i>
+                    BlogApp
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Ana Sayfa</a>
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">Ana Sayfa</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="Posts" asp-action="List"><i class="bi bi-journal-text"></i> Blog Yazıları</a>
+                            <a class="nav-link" asp-controller="Posts" asp-action="Index">Blog</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="Tags" asp-action="Index"><i class="bi bi-tags"></i> Etiketler</a>
+                            <a class="nav-link" asp-controller="Tags" asp-action="Index">Etiketler</a>
                         </li>
                         @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" asp-controller="Admin" asp-action="Index"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                                <a class="nav-link" asp-controller="Admin" asp-action="Index">Admin Panel</a>
                             </li>
                         }
-                    </ul>
-                    <form class="d-flex me-3" asp-controller="Posts" asp-action="Search" method="get">
-                        <input class="form-control me-2" type="search" name="query" placeholder="Blog yazılarında ara..." value="@ViewBag.SearchQuery">
-                        <button class="btn btn-light" type="submit">Ara</button>
-                    </form>
-                    <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated ?? false)
+                        @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                    @if (!string.IsNullOrEmpty(User.FindFirst("Image")?.Value))
-                                    {
-                                        <img src="/img/@User.FindFirst("Image")?.Value" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover;" alt="@User.Identity.Name">
-                                    }
-                                    else
-                                    {
-                                        <i class="bi bi-person-circle me-1"></i>
-                                    }
-                                    @User.Identity.Name
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Posts" asp-action="Create">
+                                    <i class="bi bi-plus-circle"></i> Yeni Yazı
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" asp-controller="Users" asp-action="Profile"><i class="bi bi-person me-2"></i>Profilim</a></li>
-                                    <li><a class="dropdown-item" asp-controller="Posts" asp-action="Create"><i class="bi bi-plus-circle me-2"></i>Yeni Yazı</a></li>
-                                    @if (User.IsInRole("Admin"))
-                                    {
-                                        <li><a class="dropdown-item" asp-controller="Tags" asp-action="Create"><i class="bi bi-tag me-2"></i>Yeni Etiket</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                    }
-                                    <li><a class="dropdown-item text-danger" asp-controller="Users" asp-action="Logout"><i class="bi bi-box-arrow-right me-2"></i>Çıkış Yap</a></li>
-                                </ul>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Users" asp-action="Login">Giriş Yap</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Users" asp-action="Register">Kayıt Ol</a>
                             </li>
                         }
                     </ul>
+                    <form class="d-flex me-2" asp-controller="Posts" asp-action="Search" method="get">
+                        <input class="form-control me-2" type="search" placeholder="Blog yazılarında ara..." aria-label="Search" name="query">
+                        <button class="btn btn-outline-light" type="submit">Ara</button>
+                    </form>
+                    <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
     </header>
 
-    <div class="container">
+    <div class="container flex-grow-1">
         <div class="toast-container position-fixed bottom-0 end-0 p-3">
             <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="d-flex">
-                    <div class="toast-body"></div>
+                    <div class="toast-body">
+                        Başarılı!
+                    </div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
             <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="d-flex">
-                    <div class="toast-body"></div>
+                    <div class="toast-body">
+                        Bir hata oluştu.
+                    </div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
@@ -130,20 +251,31 @@
 
         @if (TempData["success"] != null)
         {
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    showToast('success', '@TempData["success"]');
-                });
-            </script>
+            <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> @TempData["success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         }
-
+        @if (TempData["info"] != null)
+        {
+            <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+                <i class="bi bi-info-circle-fill me-2"></i> @TempData["info"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+        @if (TempData["warning"] != null)
+        {
+            <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["warning"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
         @if (TempData["error"] != null)
         {
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    showToast('error', '@TempData["error"]');
-                });
-            </script>
+            <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                <i class="bi bi-exclamation-octagon-fill me-2"></i> @TempData["error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         }
 
         <main role="main" class="pb-3">
@@ -151,9 +283,20 @@
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; @DateTime.Now.Year - BlogApp - <a asp-controller="Home" asp-action="Privacy">Gizlilik</a>
+    <footer class="border-top footer bg-light mt-auto">
+        <div class="container py-1">
+            <div class="d-flex justify-content-between align-items-center small">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-journal-text text-primary me-1"></i>
+                    <span>BlogApp</span>
+                    <span class="text-muted mx-1">•</span>
+                    <span class="text-muted">Modern bir blog platformu</span>
+                </div>
+                <div class="text-muted">
+                    &copy; @DateTime.Now.Year
+                    <a href="/gizlilik" class="text-decoration-none ms-2">Gizlilik</a>
+                </div>
+            </div>
         </div>
     </footer>
 
@@ -190,7 +333,49 @@
                 behavior: 'smooth'
             });
         });
+        
+        // Şifre görünürlüğü toggle butonu
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordFields = document.querySelectorAll('input[type="password"]');
+            
+            passwordFields.forEach(field => {
+                // Mevcut yapıyı koru
+                const parent = field.parentElement;
+                
+                // Sadece doğrudan form-group veya normal input alanlarına uygula
+                // ASP.NET validation wrap'ları için kontrol
+                if (!parent.classList.contains('password-container')) {
+                    // Yeni password container oluştur
+                    const container = document.createElement('div');
+                    container.className = 'password-container';
+                    
+                    // Input elemanını wrap
+                    parent.insertBefore(container, field);
+                    container.appendChild(field);
+                    
+                    // Göz butonu ekle
+                    const toggleButton = document.createElement('button');
+                    toggleButton.type = 'button';
+                    toggleButton.className = 'password-toggle';
+                    toggleButton.innerHTML = '<i class="bi bi-eye"></i>';
+                    toggleButton.setAttribute('aria-label', 'Şifreyi göster/gizle');
+                    
+                    // Göz butonunu container'a ekle
+                    container.appendChild(toggleButton);
+                    
+                    // Göz butonuna tıklama olayı ekle
+                    toggleButton.addEventListener('click', function() {
+                        if (field.type === 'password') {
+                            field.type = 'text';
+                            toggleButton.innerHTML = '<i class="bi bi-eye-slash"></i>';
+                        } else {
+                            field.type = 'password';
+                            toggleButton.innerHTML = '<i class="bi bi-eye"></i>';
+                        }
+                    });
+                }
+            });
+        });
     </script>
 </body>
-</html> 
 </html> 

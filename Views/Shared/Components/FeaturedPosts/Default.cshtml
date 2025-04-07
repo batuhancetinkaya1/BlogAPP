@@ -1,0 +1,54 @@
+@model List<BlogApp.Entity.Post>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    @foreach (var post in Model)
+    {
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <img src="@(string.IsNullOrEmpty(post.Image) ? "/img/posts/default.jpg" : post.Image)" 
+                     class="card-img-top" alt="@post.Title" 
+                     style="height: 180px; object-fit: cover;">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">
+                        <a href="/posts/@post.Url" class="text-decoration-none text-dark">@post.Title</a>
+                    </h5>
+                    
+                    @if (!string.IsNullOrEmpty(post.Description))
+                    {
+                        <p class="card-text mb-4">@(post.Description.Length > 100 ? post.Description.Substring(0, 100) + "..." : post.Description)</p>
+                    }
+                    
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <img src="@(string.IsNullOrEmpty(post.User.Image) ? "/img/profiles/default.jpg" : post.User.Image)" 
+                                     class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;" 
+                                     alt="@post.User.UserName">
+                                <a href="/users/@post.User.UserName" class="text-muted small text-decoration-none">
+                                    @post.User.UserName
+                                </a>
+                            </div>
+                            <small class="text-muted">@post.PublishedOn?.ToString("dd MMM")</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-muted small">
+                            <i class="bi bi-hand-thumbs-up me-1"></i>@post.Reactions.Count(r => r.IsLike)
+                            <span class="mx-1">•</span>
+                            <i class="bi bi-chat me-1"></i>@post.Comments.Count
+                        </div>
+                        
+                        @if (post.Tags.Any())
+                        {
+                            <span class="badge bg-light text-dark">
+                                <i class="bi bi-tag me-1"></i>@post.Tags.FirstOrDefault()?.Name
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div> 

@@ -1,63 +1,207 @@
-@model BlogApp.Models.ProfileViewModel
+@model BlogApp.Models.ViewModels.UserProfileViewModel
 
 @{
-    ViewData["Title"] = "Profil";
+    ViewData["Title"] = $"{Model.User.UserName} - Profil";
+    
+    // Eğer TempData varsa, görüntülenip temizleyelim
+    var successMessage = TempData["success"] as string;
+    var errorMessage = TempData["error"] as string;
+    
+    // TempData'yı silelim ki tekrar görüntülenmesin
+    TempData.Remove("success");
+    TempData.Remove("error");
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="text-center mb-4">
-                    @if (!string.IsNullOrEmpty(Model.Image))
-                    {
-                        <img src="/img/@Model.Image" class="rounded-circle profile-image mb-3" alt="@Model.UserName">
-                    }
-                    else
-                    {
-                        <i class="bi bi-person-circle" style="font-size: 5rem;"></i>
-                    }
-                    <h2 class="card-title">@ViewData["Title"]</h2>
-                </div>
+<div class="container">
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
 
-                <form asp-action="Profile" method="post" enctype="multipart/form-data">
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
-                    
-                    <div class="form-floating mb-3">
-                        <input asp-for="UserName" class="form-control" placeholder="Kullanıcı Adı" />
-                        <label asp-for="UserName">Kullanıcı Adı</label>
-                        <span asp-validation-for="UserName" class="text-danger"></span>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <img src="@(string.IsNullOrEmpty(Model.User.Image) ? "/img/profiles/default.jpg" : Model.User.Image)" 
+                         class="rounded-circle mb-3" 
+                         style="width: 150px; height: 150px; object-fit: cover;" 
+                         alt="@Model.User.UserName">
+                    <h4 class="card-title">@Model.User.UserName</h4>
+                    <p class="text-muted">
+                        <i class="bi bi-calendar"></i> 
+                        @Model.User.CreatedAt.ToString("dd MMMM yyyy") tarihinde katıldı
+                    </p>
+                    @if (Model.User.IsAdmin)
+                    {
+                        <span class="badge bg-danger">Admin</span>
+                    }
+                </div>
+            </div>
+
+            @if (User.Identity?.IsAuthenticated == true && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == Model?.User?.UserId.ToString())
+            {
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Profil Ayarları</h5>
+                        <form asp-controller="Users" asp-action="UpdateProfile" method="post" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-3">
+                                <label class="form-label">Kullanıcı Adı</label>
+                                <input type="text" class="form-control" name="UserName" value="@Model?.User?.UserName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">E-posta</label>
+                                <input type="email" class="form-control" name="Email" value="@Model?.User?.Email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Profil Resmi</label>
+                                <input type="file" class="form-control" name="Image" accept="image/*">
+                                <small class="text-muted">Maksimum dosya boyutu: 2MB. Sadece JPG ve PNG formatları.</small>
+                                @if (!string.IsNullOrEmpty(Model?.User?.Image))
+                                {
+                                    <div class="mt-2">
+                                        <img src="@Model?.User?.Image" alt="Mevcut profil resmi" class="img-thumbnail" style="height: 100px; width: 100px; object-fit: cover;">
+                                    </div>
+                                }
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Yeni Şifre</label>
+                                <input type="password" class="form-control" name="Password" minlength="6">
+                                <small class="text-muted">Şifrenizi değiştirmek istemiyorsanız boş bırakın</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Güncelle</button>
+                        </form>
                     </div>
-                    
-                    <div class="form-floating mb-3">
-                        <input asp-for="Email" class="form-control" placeholder="Email" readonly />
-                        <label asp-for="Email">Email</label>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-4" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#posts">Yazılar</a>
+                        </li>
+                        @if (User.Identity?.IsAuthenticated == true && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == Model?.User?.UserId.ToString())
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#settings">Tercihler</a>
+                            </li>
+                        }
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="posts">
+                            @if (Model?.Posts?.Any() == true)
+                            {
+                                foreach (var post in Model.Posts.OrderByDescending(p => p.CreatedAt))
+                                {
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h5 class="card-title">
+                                                    <a href="/posts/@post.Url" class="text-decoration-none">@post.Title</a>
+                                                </h5>
+                                                @if (User.Identity?.IsAuthenticated == true && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == Model?.User?.UserId.ToString())
+                                                {
+                                                    <div class="btn-group">
+                                                        <a href="/Posts/Edit/@post.PostId" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="deletePost(@post.PostId)">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                }
+                                            </div>
+                                            <p class="card-text">@post.Description</p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">
+                                                    @post.CreatedAt.ToString("dd MMM yyyy")
+                                                </small>
+                                                <div>
+                                                    @if (post.Tags?.Any() == true)
+                                                    {
+                                                        foreach (var tag in post.Tags)
+                                                        {
+                                                            <a href="/tags/@tag.Url" class="badge bg-secondary text-decoration-none me-1">@tag.Name</a>
+                                                        }
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="alert alert-info">
+                                    Henüz yazı paylaşılmamış.
+                                </div>
+                            }
+                        </div>
+
+                        @if (User.Identity?.IsAuthenticated == true && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == Model?.User?.UserId.ToString())
+                        {
+                            <div class="tab-pane fade" id="settings">
+                                <div class="p-3">
+                                    <h5>Tercihler</h5>
+                                    <hr />
+                                    <p class="text-muted">Uygulama tercihlerinizi buradan değiştirebilirsiniz. Yakında eklenecek özellikler:</p>
+                                    <ul class="text-muted">
+                                        <li>Karanlık mod</li>
+                                        <li>Bildirim tercihleri</li>
+                                        <li>Gizlilik ayarları</li>
+                                    </ul>
+                                    <div class="alert alert-info">
+                                        Tercihler ayarları henüz geliştirme aşamasındadır. Çok yakında kullanıma sunulacaktır.
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
-                    
-                    <div class="mb-3">
-                        <label asp-for="ImageFile" class="form-label">Profil Fotoğrafı</label>
-                        <input asp-for="ImageFile" class="form-control" accept="image/*" />
-                        <span asp-validation-for="ImageFile" class="text-danger"></span>
-                    </div>
-                    
-                    <div class="form-floating mb-3">
-                        <input asp-for="NewPassword" type="password" class="form-control" placeholder="Yeni Şifre" />
-                        <label asp-for="NewPassword">Yeni Şifre</label>
-                        <span asp-validation-for="NewPassword" class="text-danger"></span>
-                        <div class="form-text">Şifrenizi değiştirmek istemiyorsanız boş bırakın.</div>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save me-2"></i>Değişiklikleri Kaydet
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function deletePost(postId) {
+            if (confirm('Bu yazıyı silmek istediğinize emin misiniz?')) {
+                fetch(`/Posts/Delete?id=${postId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.querySelector(`[data-post-id="${postId}"]`).remove();
+                    } else {
+                        alert(data.message || 'Bir hata oluştu.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Hata:', error);
+                    alert('Bir hata oluştu, lütfen tekrar deneyin.');
+                });
+            }
+        }
+    </script>
 } 

@@ -15,16 +15,22 @@ public class PostCreateViewModel
     public string Content { get; set; } = string.Empty;
 
     [StringLength(500, ErrorMessage = "Açıklama en fazla 500 karakter olabilir")]
-    [Display(Name = "Açıklama")]
+    [Display(Name = "Açıklama (SEO için önemli)")]
     public string? Description { get; set; }
 
-    [Display(Name = "Resim")]
+    [Display(Name = "Kapak Resmi")]
     public IFormFile? ImageFile { get; set; }
 
+    [Display(Name = "YouTube Video URL (opsiyonel)")]
+    public string? VideoUrl { get; set; }
+
+    [Display(Name = "Özel URL")]
     public string Url { get; set; } = string.Empty;
 
+    [Display(Name = "Aktif")]
     public bool IsActive { get; set; } = true;
 
+    [Display(Name = "Taslak olarak kaydet")]
     public bool IsDraft { get; set; }
 
     [Display(Name = "Etiketler")]
@@ -35,4 +41,10 @@ public class PostCreateViewModel
 
     [Display(Name = "Planlanan Yayın Tarihi")]
     public DateTime? ScheduledPublishTime { get; set; }
+
+    [Display(Name = "SEO Anahtar Kelimeleri (virgülle ayırın)")]
+    public string? Keywords { get; set; }
+
+    [Display(Name = "Okunma Süresi (dakika)")]
+    public int? ReadTime { get; set; }
 } 

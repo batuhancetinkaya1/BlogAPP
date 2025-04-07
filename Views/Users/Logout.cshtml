@@ -1,0 +1,13 @@
+@{
+    ViewData["Title"] = "Çıkış Yap";
+}
+
+<div class="container">
+    <h1>Çıkış Yap</h1>
+    <p>Hesabınızdan çıkış yapmak istediğinize emin misiniz?</p>
+
+    <form asp-controller="Users" asp-action="Logout" method="post">
+        <button type="submit" class="btn btn-danger">Çıkış Yap</button>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">İptal</a>
+    </form>
+</div> 

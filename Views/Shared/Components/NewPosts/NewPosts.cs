@@ -12,12 +12,13 @@ public class NewPosts : ViewComponent
         _postRepository = postRepository;
     }
 
-    public IViewComponentResult Invoke()
+    public async Task<IViewComponentResult> InvokeAsync()
     {
-        return View(_postRepository.Posts
-            .Where(p => p.IsActive)
-            .OrderByDescending(p => p.PublishedOn)
-            .Take(5)
-            .ToList());
+        var allPosts = await _postRepository.GetAllAsync();
+        var recentPosts = allPosts
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(3)
+            .ToList();
+        return View(recentPosts);
     }
 } 

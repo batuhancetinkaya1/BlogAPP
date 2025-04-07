@@ -4,12 +4,11 @@ namespace BlogApp.Data.Abstract;
 
 public interface ITagRepository
 {
-    IQueryable<Tag> Tags { get; }
-    Tag? GetById(int tagId);
-    Tag? GetByUrl(string url);
-    void CreateTag(Tag tag);
-    void EditTag(Tag tag);
-    void UpdateTag(Tag tag);
-    void DeleteTag(int tagId);
-    Task<int> SaveChangesAsync();
+    Task<Tag> GetByIdAsync(int id);
+    Task<Tag> GetByUrlAsync(string url);
+    Task<List<Tag>> GetAllAsync();
+    Task AddAsync(Tag tag);
+    Task UpdateAsync(Tag tag);
+    Task DeleteAsync(Tag tag);
+    Task<bool> ExistsAsync(string name);
 } 

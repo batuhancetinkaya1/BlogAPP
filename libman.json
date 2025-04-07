@@ -4,29 +4,23 @@
   "libraries": [
     {
       "library": "bootstrap@5.3.2",
-      "destination": "wwwroot/lib/bootstrap/",
-      "files": [
-        "css/bootstrap.min.css",
-        "css/bootstrap.css",
-        "js/bootstrap.bundle.min.js"
-      ]
-    },
-    {
-      "library": "bootstrap-icons@1.11.3",
-      "destination": "wwwroot/lib/bootstrap-icons/",
-      "files": [
-        "font/bootstrap-icons.min.css",
-        "font/fonts/bootstrap-icons.woff",
-        "font/fonts/bootstrap-icons.woff2"
-      ]
+      "destination": "wwwroot/lib/bootstrap/"
     },
     {
       "library": "jquery@3.7.1",
-      "destination": "wwwroot/lib/jquery/",
-      "files": [
-        "jquery.min.js",
-        "jquery.js"
-      ]
+      "destination": "wwwroot/lib/jquery/"
+    },
+    {
+      "library": "jquery-validate@1.20.0",
+      "destination": "wwwroot/lib/jquery-validation/"
+    },
+    {
+      "library": "jquery-validation-unobtrusive@4.0.0",
+      "destination": "wwwroot/lib/jquery-validation-unobtrusive/"
+    },
+    {
+      "library": "bootstrap-icons@1.11.3",
+      "destination": "wwwroot/lib/bootstrap-icons/"
     }
   ]
 }

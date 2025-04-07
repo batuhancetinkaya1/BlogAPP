@@ -1,0 +1,86 @@
+@{
+    ViewData["Title"] = "Admin Panel";
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <h2>Admin Panel</h2>
+            <hr />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Kullanıcılar</h5>
+                    <p class="card-text">Toplam Kullanıcı: @ViewBag.UserCount</p>
+                    <a asp-controller="Admin" asp-action="Users" class="btn btn-primary">Kullanıcıları Yönet</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Yazılar</h5>
+                    <p class="card-text">Toplam Yazı: @ViewBag.PostCount</p>
+                    <a asp-controller="Admin" asp-action="Posts" class="btn btn-primary">Yazıları Yönet</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Etiketler</h5>
+                    <p class="card-text">Toplam Etiket: @ViewBag.TagCount</p>
+                    <a asp-controller="Tags" asp-action="Index" class="btn btn-primary">Etiketleri Yönet</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Son Yazılar</h5>
+                    <div class="list-group">
+                        @foreach (var post in ViewBag.RecentPosts)
+                        {
+                            <a href="/posts/@post.Url" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">@post.Title</h6>
+                                    <small>@post.CreatedAt.ToString("dd MMM yyyy")</small>
+                                </div>
+                                <small>@post.User.UserName</small>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Son Kayıt Olan Kullanıcılar</h5>
+                    <div class="list-group">
+                        @foreach (var user in ViewBag.RecentUsers)
+                        {
+                            <a href="/users/profile/@user.UserId" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">@user.UserName</h6>
+                                    <small>@user.CreatedAt.ToString("dd MMM yyyy")</small>
+                                </div>
+                                <small>@user.Email</small>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

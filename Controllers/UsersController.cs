@@ -7,10 +7,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BlogApp.Entity;
-using BlogApp.Models;
+using BlogApp.Models.ViewModels;
 using BlogApp.Data.Abstract;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using BCrypt.Net;
+using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 
 namespace BlogApp.Controllers;
 
@@ -25,6 +28,8 @@ public class UsersController : Controller
         _postRepository = postRepository;
     }
 
+    [HttpGet]
+    [Route("Users/Login")]
     public IActionResult Login()
     {
         if (User.Identity?.IsAuthenticated == true)
@@ -35,6 +40,8 @@ public class UsersController : Controller
     }
 
     [HttpPost]
+    [Route("Users/Login")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
         if (!ModelState.IsValid)
@@ -42,16 +49,10 @@ public class UsersController : Controller
             return View(model);
         }
 
-        var user = _userRepository.GetByEmail(model.Email ?? "");
-        if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password ?? "", user.Password))
+        var user = await _userRepository.GetByEmailAsync(model.Email);
+        if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.Password))
         {
             ModelState.AddModelError("", "Geçersiz email veya şifre");
-            return View(model);
-        }
-
-        if (!user.IsActive)
-        {
-            ModelState.AddModelError("", "Hesabınız aktif değil");
             return View(model);
         }
 
@@ -76,16 +77,16 @@ public class UsersController : Controller
             new ClaimsPrincipal(claimsIdentity),
             authProperties);
 
-        // Update last login
+        // Update user login timestamp
         user.LastLogin = DateTime.UtcNow;
-        _userRepository.EditUser(user);
-        await _userRepository.SaveChangesAsync();
+        await _userRepository.UpdateAsync(user);
 
-        TempData["Message"] = "Başarıyla giriş yaptınız.";
-        TempData["MessageType"] = "success";
+        TempData["success"] = "Başarıyla giriş yaptınız.";
         return RedirectToAction("Index", "Home");
     }
 
+    [HttpGet]
+    [Route("Users/Register")]
     public IActionResult Register()
     {
         if (User.Identity?.IsAuthenticated == true)
@@ -96,6 +97,8 @@ public class UsersController : Controller
     }
 
     [HttpPost]
+    [Route("Users/Register")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Register(RegisterViewModel model)
     {
         if (!ModelState.IsValid)
@@ -103,8 +106,8 @@ public class UsersController : Controller
             return View(model);
         }
 
-        var existingUser = _userRepository.GetByEmail(model.Email ?? "");
-        if (existingUser != null)
+        var exists = await _userRepository.ExistsAsync(model.Email);
+        if (exists)
         {
             ModelState.AddModelError("Email", "Bu email adresi zaten kullanımda");
             return View(model);
@@ -116,135 +119,302 @@ public class UsersController : Controller
             Email = model.Email,
             Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
             CreatedAt = DateTime.UtcNow,
-            IsActive = true,
             IsAdmin = false
         };
 
-        _userRepository.CreateUser(user);
-        await _userRepository.SaveChangesAsync();
+        await _userRepository.AddAsync(user);
 
-        TempData["Message"] = "Kayıt işlemi başarılı. Giriş yapabilirsiniz.";
-        TempData["MessageType"] = "success";
+        TempData["success"] = "Kayıt işlemi başarılı. Giriş yapabilirsiniz.";
         return RedirectToAction(nameof(Login));
     }
 
     [Authorize]
-    public async Task<IActionResult> Logout()
+    [HttpGet]
+    [Route("Users/Logout")]
+    public IActionResult LogoutConfirm()
     {
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        TempData["Message"] = "Başarıyla çıkış yaptınız.";
-        TempData["MessageType"] = "success";
-        return RedirectToAction("Index", "Home");
-    }
-
-    [Authorize]
-    public IActionResult Profile()
-    {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var user = _userRepository.GetById(userId);
-        if (user == null)
-        {
-            return NotFound();
-        }
-
-        var model = new ProfileViewModel
-        {
-            UserName = user.UserName,
-            Email = user.Email,
-            Image = user.Image
-        };
-
-        return View(model);
+        // For security, redirect to POST method for actual logout
+        return View("Logout");
     }
 
     [Authorize]
     [HttpPost]
-    public async Task<IActionResult> Profile(ProfileViewModel model, IFormFile? imageFile)
+    [Route("Users/Logout")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
     {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        TempData["success"] = "Başarıyla çıkış yaptınız.";
+        return RedirectToAction("Index", "Home");
+    }
 
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var user = _userRepository.GetById(userId);
+    [Route("users/{username}")]
+    public async Task<IActionResult> Profile(string username)
+    {
+        var user = await _userRepository.GetByUsernameAsync(username);
         if (user == null)
         {
             return NotFound();
         }
 
-        // Check if email is already in use by another user
-        var existingUser = _userRepository.GetByEmail(model.Email ?? "");
-        if (existingUser != null && existingUser.UserId != userId)
+        // Kullanıcı resmi yoksa varsayılan resmi kullan
+        if (string.IsNullOrEmpty(user.Image))
         {
-            ModelState.AddModelError("Email", "Bu email adresi zaten kullanımda");
-            return View(model);
+            user.Image = "/img/profiles/default.jpg";
         }
 
-        // Handle image upload
-        if (imageFile != null)
+        var viewModel = new UserProfileViewModel
         {
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(imageFile.FileName)}";
-            var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "users");
-            Directory.CreateDirectory(uploadDir);
-            var path = Path.Combine(uploadDir, fileName);
-            
-            using (var stream = new FileStream(path, FileMode.Create))
+            User = user,
+            Posts = await _postRepository.GetByUserIdAsync(user.UserId)
+        };
+
+        return View(viewModel);
+    }
+
+    [Route("users/profile/{id}")]
+    public async Task<IActionResult> ProfileById(int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+        {
+            return NotFound();
+        }
+        
+        // username route'a yönlendir
+        return RedirectToAction("Profile", new { username = user.UserName });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [Route("Users/UpdateProfile")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateProfile(ProfileUpdateModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
             {
-                await imageFile.CopyToAsync(stream);
+                TempData["error"] = error.ErrorMessage;
+            }
+            
+            var username = User.Identity?.Name;
+            return RedirectToAction("Profile", new { username });
+        }
+
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var user = await _userRepository.GetByIdAsync(userId);
+            
+            if (user == null)
+            {
+                TempData["error"] = "Kullanıcı bulunamadı.";
+                return RedirectToAction("Index", "Home");
             }
 
-            // Delete old image if exists
-            if (!string.IsNullOrEmpty(user.Image))
+            // Kullanıcı adı güncelleme
+            if (!string.IsNullOrEmpty(model.UserName) && model.UserName.Length >= 3 && model.UserName.Length <= 50)
             {
-                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "users", user.Image);
-                if (System.IO.File.Exists(oldPath))
+                // Kullanıcı adı başka bir kullanıcı tarafından kullanılıyor mu kontrol et
+                var existingUser = await _userRepository.GetByUsernameAsync(model.UserName);
+                if (existingUser != null && existingUser.UserId != userId)
                 {
-                    System.IO.File.Delete(oldPath);
+                    TempData["error"] = "Bu kullanıcı adı başka bir kullanıcı tarafından kullanılıyor.";
+                    return RedirectToAction("Profile", new { username = user.UserName });
+                }
+                user.UserName = model.UserName;
+            }
+            else
+            {
+                TempData["error"] = "Kullanıcı adı 3-50 karakter arasında olmalıdır.";
+                return RedirectToAction("Profile", new { username = user.UserName });
+            }
+
+            // Email güncelleme
+            if (!string.IsNullOrEmpty(model.Email) && model.Email.Contains("@"))
+            {
+                // Email başka bir kullanıcı tarafından kullanılıyor mu kontrol et
+                var existingUserByEmail = await _userRepository.GetByEmailAsync(model.Email);
+                if (existingUserByEmail != null && existingUserByEmail.UserId != userId)
+                {
+                    TempData["error"] = "Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor.";
+                    return RedirectToAction("Profile", new { username = user.UserName });
+                }
+                user.Email = model.Email;
+            }
+            else
+            {
+                TempData["error"] = "Geçerli bir e-posta adresi giriniz.";
+                return RedirectToAction("Profile", new { username = user.UserName });
+            }
+
+            // Profil resmi güncelleme
+            if (model.Image != null && model.Image.Length > 0)
+            {
+                try
+                {
+                    // Görüntü dosyasının uzantısını kontrol et
+                    var extension = Path.GetExtension(model.Image.FileName).ToLowerInvariant();
+                    if (extension != ".jpg" && extension != ".jpeg" && extension != ".png")
+                    {
+                        TempData["error"] = "Sadece JPG ve PNG dosyalarına izin verilmektedir.";
+                        return RedirectToAction("Profile", new { username = user.UserName });
+                    }
+
+                    // Dosya boyutu kontrolü
+                    if (model.Image.Length > 2 * 1024 * 1024) // 2MB
+                    {
+                        TempData["error"] = "Dosya boyutu 2MB'ı geçemez.";
+                        return RedirectToAction("Profile", new { username = user.UserName });
+                    }
+
+                    // Dosya adı oluştur
+                    var fileName = $"{Guid.NewGuid()}{extension}";
+                    var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "profiles");
+                    if (!Directory.Exists(uploadsDirectory))
+                    {
+                        Directory.CreateDirectory(uploadsDirectory);
+                    }
+
+                    var filePath = Path.Combine(uploadsDirectory, fileName);
+
+                    // Eğer kullanıcının mevcut bir resmi varsa onu sil
+                    if (!string.IsNullOrEmpty(user.Image) && !user.Image.Contains("default.jpg"))
+                    {
+                        try 
+                        {
+                            var oldImagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", user.Image.TrimStart('/'));
+                            Console.WriteLine($"Silinecek eski dosya yolu: {oldImagePath}");
+                            
+                            if (System.IO.File.Exists(oldImagePath))
+                            {
+                                System.IO.File.Delete(oldImagePath);
+                                Console.WriteLine("Eski dosya silindi");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Eski dosya silinirken hata: {ex.Message} - devam edilecek");
+                        }
+                    }
+
+                    // Yeni dosyayı kaydet
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    {
+                        model.Image.CopyTo(fileStream);
+                        Console.WriteLine("Yeni resim dosyaya kopyalandı");
+                    }
+
+                    // Veritabanında kullanıcı nesnesini güncelle
+                    var newImagePath = $"/img/profiles/{fileName}";
+                    Console.WriteLine($"Yeni resim yolu: {newImagePath}");
+                    user.Image = newImagePath;
+                }
+                catch (Exception ex) 
+                {
+                    Console.WriteLine($"Resim işleme hatası: {ex.Message}");
+                    TempData["error"] = $"Resim yükleme hatası: {ex.Message}";
+                    return RedirectToAction("Profile", new { username = user.UserName });
                 }
             }
 
-            user.Image = $"users/{fileName}";
-        }
-
-        user.UserName = model.UserName;
-        user.Email = model.Email;
-
-        if (!string.IsNullOrEmpty(model.NewPassword))
-        {
-            user.Password = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
-        }
-
-        _userRepository.EditUser(user);
-        await _userRepository.SaveChangesAsync();
-
-        // Update claims if username changed
-        if (model.UserName != User.Identity?.Name)
-        {
-            var claims = new List<Claim>
+            // Şifre güncelleme
+            if (!string.IsNullOrEmpty(model.Password))
             {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User"),
-                new Claim("Image", user.Image ?? "")
-            };
+                if (model.Password.Length < 6)
+                {
+                    TempData["error"] = "Şifre en az 6 karakter olmalıdır.";
+                    return RedirectToAction("Profile", new { username = user.UserName });
+                }
+                user.Password = BCrypt.Net.BCrypt.HashPassword(model.Password);
+            }
 
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(claimsIdentity));
+            await _userRepository.UpdateAsync(user);
+            await UpdateAuthenticationCookie(user);
+
+            TempData["success"] = "Profil başarıyla güncellendi.";
+            return RedirectToAction("Profile", new { username = user.UserName });
         }
+        catch (Exception ex)
+        {
+            TempData["error"] = $"Bir hata oluştu: {ex.Message}";
+            return RedirectToAction("Profile", new { username = User.Identity?.Name });
+        }
+    }
 
-        TempData["Message"] = "Profil başarıyla güncellendi.";
-        TempData["MessageType"] = "success";
-        return RedirectToAction(nameof(Profile));
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateSettings(SettingsUpdateModel model)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            Console.WriteLine($"UpdateSettings çağrıldı. UserId: {userId}");
+            
+            var user = await _userRepository.GetByIdAsync(userId);
+            
+            if (user == null)
+            {
+                Console.WriteLine("Kullanıcı bulunamadı");
+                return Json(new { success = false, message = "Kullanıcı bulunamadı." });
+            }
+
+            var email = model.Email;
+            Console.WriteLine($"Gelen email adresi: {email}");
+            
+            if (string.IsNullOrEmpty(email) || !email.Contains("@"))
+            {
+                Console.WriteLine("Geçersiz email format");
+                return Json(new { success = false, message = "Geçerli bir email adresi giriniz." });
+            }
+
+            var existingUser = await _userRepository.GetByEmailAsync(email);
+            if (existingUser != null && existingUser.UserId != userId)
+            {
+                Console.WriteLine("Email adresi başka bir kullanıcı tarafından kullanılıyor");
+                return Json(new { success = false, message = "Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor." });
+            }
+
+            user.Email = email;
+            await _userRepository.UpdateAsync(user);
+            Console.WriteLine("Kullanıcı email adresi güncellendi");
+            
+            await UpdateAuthenticationCookie(user);
+            Console.WriteLine("Kimlik bilgileri güncellendi");
+
+            return Json(new { success = true, message = "Ayarlar başarıyla güncellendi." });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UpdateSettings hatası: {ex.Message}");
+            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+            return Json(new { success = false, message = $"Bir hata oluştu: {ex.Message}" });
+        }
+    }
+
+    private async Task UpdateAuthenticationCookie(User user)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+            new Claim(ClaimTypes.Name, user.UserName),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User"),
+            new Claim("Image", user.Image ?? "")
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
     }
 
     [Authorize]
     public IActionResult ChangePassword()
     {
-        return View(new ChangePasswordViewModel());
+        return View();
     }
 
     [Authorize]
@@ -257,7 +427,8 @@ public class UsersController : Controller
         }
 
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var user = _userRepository.GetById(userId);
+        var user = await _userRepository.GetByIdAsync(userId);
+
         if (user == null)
         {
             return NotFound();
@@ -265,36 +436,37 @@ public class UsersController : Controller
 
         if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.Password))
         {
-            ModelState.AddModelError("CurrentPassword", "Mevcut şifre yanlış");
+            ModelState.AddModelError("CurrentPassword", "Mevcut şifre hatalı");
             return View(model);
         }
 
         user.Password = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
-        _userRepository.UpdateUser(user);
-        await _userRepository.SaveChangesAsync();
+        await _userRepository.UpdateAsync(user);
 
         TempData["success"] = "Şifreniz başarıyla değiştirildi.";
-        return RedirectToAction(nameof(Profile));
+        return RedirectToAction("Profile", new { username = user.UserName });
     }
 
     [Authorize]
-    public IActionResult MyPosts(int pageNumber = 1, int pageSize = 10)
+    [HttpGet]
+    [Route("Users/MyPosts")]
+    public async Task<IActionResult> MyPosts(int pageNumber = 1, int pageSize = 10)
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var posts = _postRepository.Posts
-            .Where(p => p.UserId == userId)
+        var posts = await _postRepository.GetByUserIdAsync(userId);
+        
+        var totalPosts = posts.Count;
+        var paginatedPosts = posts
             .OrderByDescending(p => p.CreatedAt)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .Include(p => p.Tags)
-            .Include(p => p.Comments)
             .ToList();
 
-        ViewBag.TotalPosts = _postRepository.Posts.Count(p => p.UserId == userId);
+        ViewBag.TotalPosts = totalPosts;
         ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = (int)Math.Ceiling(ViewBag.TotalPosts / (double)pageSize);
+        ViewBag.TotalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
 
-        return View(posts);
+        return View(paginatedPosts);
     }
 
     public IActionResult AccessDenied()

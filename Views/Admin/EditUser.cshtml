@@ -1,0 +1,59 @@
+@model BlogApp.Models.ViewModels.UserEditViewModel
+
+@{
+    ViewData["Title"] = "Kullanıcı Düzenle";
+}
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <h2>@ViewData["Title"]</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a asp-controller="Admin" asp-action="Users" class="btn btn-secondary">Kullanıcılara Dön</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <form asp-action="EditUser" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        <input type="hidden" asp-for="UserId" />
+
+                        <div class="mb-3">
+                            <label asp-for="UserName" class="form-label"></label>
+                            <input asp-for="UserName" class="form-control" />
+                            <span asp-validation-for="UserName" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsAdmin" class="form-check-input" />
+                            <label asp-for="IsAdmin" class="form-check-label"></label>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsActive" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label"></label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Kaydet</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+} 

@@ -5,10 +5,16 @@ namespace BlogApp.Entity;
 
 public class Comment
 {
+    public Comment()
+    {
+        Content = string.Empty;
+        CreatedAt = DateTime.UtcNow;
+    }
+
     [Key]
     public int CommentId { get; set; }
 
-    [Required(ErrorMessage = "Yorum alanı zorunludur")]
+    [Required(ErrorMessage = "Yorum içeriği zorunludur")]
     [StringLength(1000, ErrorMessage = "Yorum en fazla 1000 karakter olabilir")]
     [Display(Name = "Yorum")]
     public string Content { get; set; } = string.Empty;

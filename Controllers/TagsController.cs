@@ -1,129 +1,186 @@
 using BlogApp.Data.Abstract;
 using BlogApp.Entity;
+using BlogApp.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.RegularExpressions;
-using System.Linq;
 
-namespace BlogApp.Controllers;
-
-public class TagsController : Controller
+namespace BlogApp.Controllers
 {
-    private readonly ITagRepository _tagRepository;
-
-    public TagsController(ITagRepository tagRepository)
+    public class TagsController : Controller
     {
-        _tagRepository = tagRepository;
-    }
+        private readonly ITagRepository _tagRepository;
+        private readonly IPostRepository _postRepository;
 
-    public IActionResult Index()
-    {
-        var tags = _tagRepository.Tags.ToList();
-        return View(tags);
-    }
-
-    [Authorize(Roles = "Admin")]
-    public IActionResult Create()
-    {
-        return View();
-    }
-
-    [Authorize(Roles = "Admin")]
-    [HttpPost]
-    public IActionResult Create(Tag tag)
-    {
-        if (!ModelState.IsValid)
+        public TagsController(ITagRepository tagRepository, IPostRepository postRepository)
         {
-            return View(tag);
+            _tagRepository = tagRepository;
+            _postRepository = postRepository;
         }
 
-        tag.Url = GenerateUrl(tag.Name);
-        _tagRepository.CreateTag(tag);
-        return RedirectToAction("Index");
-    }
-
-    [Authorize(Roles = "Admin")]
-    public IActionResult Edit(int id)
-    {
-        var tag = _tagRepository.GetById(id);
-        if (tag == null)
+        public async Task<IActionResult> Index()
         {
-            return NotFound();
+            var tags = await _tagRepository.GetAllAsync();
+            return View(tags);
         }
 
-        return View(tag);
-    }
-
-    [Authorize(Roles = "Admin")]
-    [HttpPost]
-    public IActionResult Edit(int id, Tag tag)
-    {
-        if (id != tag.TagId)
+        [Route("tags/{url}")]
+        public async Task<IActionResult> Detail(string url)
         {
-            return NotFound();
+            var tag = await _tagRepository.GetByUrlAsync(url);
+            if (tag == null)
+            {
+                return NotFound();
+            }
+
+            var posts = await _postRepository.GetByTagIdAsync(tag.TagId);
+            
+            var viewModel = new PostListViewModel
+            {
+                Posts = posts,
+                CurrentPage = 1,
+                TotalPages = 1,
+                CurrentSort = "date",
+                CurrentTag = tag.Url
+            };
+
+            ViewBag.Tag = tag;
+            return View(viewModel);
         }
 
-        if (ModelState.IsValid)
+        [Authorize(Roles = "Admin")]
+        public IActionResult Create()
         {
-            // Generate URL from name if not provided
+            return View();
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        public async Task<IActionResult> Create(Tag tag)
+        {
+            if (!tag.Color.HasValue)
+            {
+                ModelState.AddModelError("Color", "Etiket rengi seçimi zorunludur.");
+                return View(tag);
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(tag);
+            }
+
             if (string.IsNullOrEmpty(tag.Url))
             {
                 tag.Url = GenerateUrl(tag.Name);
             }
             
-            var existingTag = _tagRepository.GetByUrl(tag.Url);
-            if (existingTag != null && existingTag.TagId != id)
+            await _tagRepository.AddAsync(tag);
+            TempData["success"] = "Etiket başarıyla oluşturuldu.";
+            return RedirectToAction("Index");
+        }
+
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var tag = await _tagRepository.GetByIdAsync(id);
+            if (tag == null)
             {
-                ModelState.AddModelError("Url", "Bu URL zaten kullanımda");
+                return NotFound();
+            }
+
+            return View(tag);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        public async Task<IActionResult> Edit(int id, Tag tag)
+        {
+            if (id != tag.TagId)
+            {
+                return NotFound();
+            }
+
+            if (!tag.Color.HasValue)
+            {
+                ModelState.AddModelError("Color", "Etiket rengi seçimi zorunludur.");
                 return View(tag);
             }
 
-            _tagRepository.EditTag(tag);
-            TempData["Message"] = "Etiket başarıyla güncellendi.";
-            TempData["MessageType"] = "success";
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(tag.Url))
+                    {
+                        tag.Url = GenerateUrl(tag.Name);
+                    }
+                    
+                    var existingTag = await _tagRepository.GetByUrlAsync(tag.Url);
+                    if (existingTag != null && existingTag.TagId != id)
+                    {
+                        ModelState.AddModelError("Url", "Bu URL zaten kullanımda");
+                        return View(tag);
+                    }
+
+                    await _tagRepository.UpdateAsync(tag);
+                    TempData["success"] = "Etiket başarıyla güncellendi.";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", $"Etiket güncellenirken bir hata oluştu: {ex.Message}");
+                    return View(tag);
+                }
+            }
+
+            return View(tag);
+        }
+
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var tag = await _tagRepository.GetByIdAsync(id);
+            if (tag == null)
+            {
+                return NotFound();
+            }
+
+            return View(tag);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost, ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var tag = await _tagRepository.GetByIdAsync(id);
+            if (tag == null)
+            {
+                return NotFound();
+            }
+
+            await _tagRepository.DeleteAsync(tag);
+            TempData["success"] = "Etiket başarıyla silindi.";
             return RedirectToAction(nameof(Index));
         }
 
-        return View(tag);
-    }
-
-    [Authorize(Roles = "Admin")]
-    public IActionResult Delete(int id)
-    {
-        var tag = _tagRepository.GetById(id);
-        if (tag == null)
+        private static string GenerateUrl(string text)
         {
-            return NotFound();
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
+            text = text.ToLower();
+            text = text.Replace('ı', 'i')
+                       .Replace('ğ', 'g')
+                       .Replace('ü', 'u')
+                       .Replace('ş', 's')
+                       .Replace('ö', 'o')
+                       .Replace('ç', 'c')
+                       .Replace('İ', 'i');
+                       
+            text = Regex.Replace(text, @"[^a-z0-9\s-]", "");
+            text = Regex.Replace(text, @"\s+", " ").Trim();
+            text = Regex.Replace(text, @"\s", "-");
+            return text;
         }
-
-        return View(tag);
-    }
-
-    [Authorize(Roles = "Admin")]
-    [HttpPost, ActionName("Delete")]
-    public IActionResult DeleteConfirmed(int id)
-    {
-        var tag = _tagRepository.GetById(id);
-        if (tag == null)
-        {
-            return NotFound();
-        }
-
-        _tagRepository.DeleteTag(id);
-        TempData["Message"] = "Etiket başarıyla silindi.";
-        TempData["MessageType"] = "success";
-        return RedirectToAction(nameof(Index));
-    }
-
-    private static string GenerateUrl(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return string.Empty;
-
-        text = text.ToLower();
-        text = Regex.Replace(text, @"[^a-z0-9\s-]", "");
-        text = Regex.Replace(text, @"\s+", " ").Trim();
-        text = Regex.Replace(text, @"\s", "-");
-        return text;
     }
 } 

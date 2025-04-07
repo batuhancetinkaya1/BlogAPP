@@ -402,18 +402,13 @@ FodyWeavers.xsd
 *.db-shm
 *.db-wal
 
-# Folder config file
-Desktop.ini
+# Application-specific settings
+appsettings.Development.json
+appsettings.Production.json
 
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
+# Image uploads
+wwwroot/img/uploads/
+wwwroot/img/profiles/
 
-# VS Code directories
-.vscode/
-
-# Windows shortcuts
-*.lnk
-
-# JetBrains Rider
-.idea/
-*.sln.iml
+# Logs
+logs/

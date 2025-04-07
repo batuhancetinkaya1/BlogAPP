@@ -1,288 +1,211 @@
 @using System.Security.Claims
 @model BlogApp.Entity.Post
+@using BlogApp.Entity
 
 @{
-    ViewData["Title"] = Model.Title;
-    ViewData["Description"] = Model.Description;
-    if (!string.IsNullOrEmpty(Model.Image))
+    ViewData["Title"] = Model?.Title ?? "Blog Yazısı";
+    ViewData["Description"] = Model?.Description;
+    if (!string.IsNullOrEmpty(Model?.Image))
     {
-        ViewData["OgImage"] = $"/img/{Model.Image}";
+        ViewData["OgImage"] = Model.Image;
     }
+
+    var userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0") : 0;
+    var userReaction = Model?.Reactions?.FirstOrDefault(r => r.UserId == userId);
+    var likesCount = Model?.Reactions?.Count(r => r.IsLike) ?? 0;
+    var dislikesCount = Model?.Reactions?.Count(r => !r.IsLike) ?? 0;
 }
 
 <div class="container">
+    @Html.AntiForgeryToken()
     <div class="row">
-        <div class="col-md-8">
-            @if (Model != null)
-            {
-                <article class="blog-post">
-                    <h1 class="blog-post-title">@Model.Title</h1>
-                    
-                    <div class="blog-post-meta mb-3">
-                        <span class="text-muted">
-                            <i class="bi bi-calendar"></i>
-                            @Model.PublishedOn?.ToLocalTime().ToString("dd MMMM yyyy")
-                        </span>
-                        <span class="text-muted ms-3">
-                            <i class="bi bi-person"></i>
-                            @Model.User.UserName
-                        </span>
-                        <div class="float-end">
-                            @if (User.Identity?.IsAuthenticated == true)
-                            {
-                                <div class="btn-group reaction-buttons" data-post-id="@Model.PostId">
-                                    <button class="btn btn-sm btn-outline-success like-button @(Model.Reactions.Any(r => r.UserId == int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0") && r.IsLike) ? "active" : "")">
-                                        <i class="bi bi-hand-thumbs-up"></i>
-                                        <span class="likes-count">@Model.Reactions.Count(r => r.IsLike)</span>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger dislike-button @(Model.Reactions.Any(r => r.UserId == int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0") && !r.IsLike) ? "active" : "")">
-                                        <i class="bi bi-hand-thumbs-down"></i>
-                                        <span class="dislikes-count">@Model.Reactions.Count(r => !r.IsLike)</span>
-                                    </button>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="btn-group">
-                                    <button class="btn btn-sm btn-outline-success" disabled>
-                                        <i class="bi bi-hand-thumbs-up"></i>
-                                        <span>@Model.Reactions.Count(r => r.IsLike)</span>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" disabled>
-                                        <i class="bi bi-hand-thumbs-down"></i>
-                                        <span>@Model.Reactions.Count(r => !r.IsLike)</span>
-                                    </button>
-                                </div>
-                            }
+        <div class="col-md-8 mx-auto">
+            <article class="blog-post">
+                <header class="mb-4">
+                    <h1 class="display-4 mb-3">@Model.Title</h1>
+                    <div class="d-flex align-items-center text-muted mb-3">
+                        <img src="@(string.IsNullOrEmpty(Model.User.Image) ? "/img/profiles/default.jpg" : Model.User.Image)" 
+                             class="rounded-circle me-2" 
+                             style="width: 40px; height: 40px; object-fit: cover;" 
+                             alt="@Model.User.UserName">
+                        <div>
+                            <div>
+                                <a href="/users/@Model.User.UserName" class="text-decoration-none">
+                                    @Model.User.UserName
+                                    @if (Model.User.IsAdmin)
+                                    {
+                                        <i class="bi bi-patch-check-fill text-primary" title="Admin"></i>
+                                    }
+                                </a>
+                            </div>
+                            <small>@Model.CreatedAt.ToString("dd MMMM yyyy")</small>
                         </div>
                     </div>
-
                     @if (!string.IsNullOrEmpty(Model.Image))
                     {
-                        <img src="/img/@Model.Image" class="img-fluid rounded mb-3" alt="@Model.Title">
+                        <img src="@Model.Image" class="img-fluid rounded mb-4" alt="@Model.Title">
                     }
+                </header>
 
-                    <div class="blog-post-content mb-3">
-                        @Html.Raw(Model.Content)
-                    </div>
+                <div class="blog-content mb-4">
+                    @Html.Raw(Model.Content)
+                </div>
 
-                    <div class="blog-post-tags mb-3">
-                        @foreach (var tag in Model.Tags)
+                <div class="blog-tags mb-4">
+                    @foreach (var tag in Model.Tags)
+                    {
+                        string tagColor = "secondary";
+                        string textClass = "text-white";
+                        
+                        if (tag.Color.HasValue)
                         {
-                            <a asp-controller="Posts" asp-action="Index" asp-route-tag="@tag.Url"
-                               class="badge bg-@tag.Color?.ToString().ToLower() text-decoration-none">
-                                @tag.Name
-                            </a>
-                        }
-                    </div>
-
-                    <div class="post-share mb-4">
-                        <h5 class="mb-3">Bu Yazıyı Paylaş</h5>
-                        <div class="d-flex gap-2">
-                            <a href="https://twitter.com/intent/tweet?url=@(Context.Request.Scheme)://@(Context.Request.Host)/posts/@(Model.Url)&text=@(Model.Title)" 
-                               target="_blank" 
-                               class="btn btn-outline-primary">
-                                <i class="bi bi-twitter me-2"></i>Twitter
-                            </a>
-                            <a href="https://www.facebook.com/sharer/sharer.php?u=@(Context.Request.Scheme)://@(Context.Request.Host)/posts/@(Model.Url)" 
-                               target="_blank" 
-                               class="btn btn-outline-primary">
-                                <i class="bi bi-facebook me-2"></i>Facebook
-                            </a>
-                            <a href="https://www.linkedin.com/shareArticle?mini=true&url=@(Context.Request.Scheme)://@(Context.Request.Host)/posts/@(Model.Url)&title=@(Model.Title)" 
-                               target="_blank" 
-                               class="btn btn-outline-primary">
-                                <i class="bi bi-linkedin me-2"></i>LinkedIn
-                            </a>
-                            <button onclick="copyToClipboard('@(Context.Request.Scheme)://@(Context.Request.Host)/posts/@(Model.Url)')" 
-                                    class="btn btn-outline-secondary">
-                                <i class="bi bi-link-45deg me-2"></i>Bağlantıyı Kopyala
-                            </button>
-                        </div>
-                    </div>
-                </article>
-
-                <hr />
-
-                <div class="comments-section">
-                    <h3>Yorumlar (<span id="comment-count">@Model.Comments.Count</span>)</h3>
-                    
-                    <div id="comments-list">
-                        @if (Model.Comments.Any())
-                        {
-                            foreach (var comment in Model.Comments.OrderByDescending(c => c.PublishedOn))
+                            switch(tag.Color.Value)
                             {
-                                <div class="comment mb-3">
-                                    <div class="d-flex">
-                                        <img src="/img/@comment.User.Image" class="rounded-circle me-2" alt="@comment.User.UserName" style="width: 40px; height: 40px; object-fit: cover;">
-                                        <div>
-                                            <h6 class="mb-0">@comment.User.UserName</h6>
-                                            <small class="text-muted">@comment.PublishedOn?.ToString("dd.MM.yyyy HH:mm")</small>
-                                            <p class="mb-0">@comment.Content</p>
-                                        </div>
-                                    </div>
-                                </div>
+                                case TagColors.Primary: tagColor = "primary"; break;
+                                case TagColors.Success: tagColor = "success"; break;
+                                case TagColors.Danger: tagColor = "danger"; break;
+                                case TagColors.Warning: tagColor = "warning"; textClass = "text-dark"; break;
+                                case TagColors.Info: tagColor = "info"; textClass = "text-dark"; break;
+                                case TagColors.Orange: tagColor = "orange"; break;
+                                case TagColors.Dark: tagColor = "dark"; break;
+                                default: tagColor = "secondary"; break;
                             }
+                        }
+                        
+                        @if (tag.Color.HasValue && tag.Color.Value == TagColors.Info)
+                        {
+                            <a href="/tags/@tag.Url" class="badge text-dark text-decoration-none me-2" style="background-color: #0dcaf0 !important;">@tag.Name</a>
                         }
                         else
                         {
-                            <div class="alert alert-info">
-                                Henüz yorum yapılmamış. İlk yorumu siz yapın!
-                            </div>
+                            <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none me-2">@tag.Name</a>
                         }
-                    </div>
+                    }
+                </div>
 
-                    @if (User.Identity?.IsAuthenticated ?? false)
+                <div class="blog-reactions mb-4">
+                    <div class="d-flex align-items-center">
+                        <button class="btn @(userReaction?.IsLike == true ? "btn-primary" : "btn-outline-primary") me-2" onclick="addReaction(@Model.PostId, true)">
+                            <i class="bi bi-hand-thumbs-up"></i> Beğen (@likesCount)
+                        </button>
+                        <button class="btn @(userReaction?.IsLike == false ? "btn-danger" : "btn-outline-danger")" onclick="addReaction(@Model.PostId, false)">
+                            <i class="bi bi-hand-thumbs-down"></i> Beğenme (@dislikesCount)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="blog-comments">
+                    <h3 class="mb-4">Yorumlar</h3>
+                    @if (User.Identity.IsAuthenticated)
                     {
-                        <div class="comment-form mb-4">
-                            <h4 class="mb-3">Yorum Ekle</h4>
-                            <form id="commentForm" onsubmit="return submitComment(event)">
-                                <input type="hidden" name="postId" value="@Model.PostId" />
-                                <div class="mb-3">
-                                    <textarea name="content" id="commentText" class="form-control" rows="3" required></textarea>
-                                </div>
-                                <div class="d-flex justify-content-end">
-                                    <button type="submit" class="btn btn-primary" id="submitComment">
-                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                        <span class="button-text">Yorum Yap</span>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                        <form id="commentForm" class="mb-4">
+                            <div class="mb-3">
+                                <textarea class="form-control" id="commentContent" rows="3" placeholder="Yorumunuzu yazın..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Yorum Yap</button>
+                        </form>
                     }
                     else
                     {
-                        <div class="alert alert-info mt-4">
-                            <i class="bi bi-info-circle me-2"></i> Yorum yapmak için <a asp-controller="Users" asp-action="Login" class="alert-link">giriş yapın</a>.
+                        <div class="alert alert-info">
+                            Yorum yapabilmek için <a href="/Users/Login">giriş yapın</a> veya <a href="/Users/Register">kayıt olun</a>.
                         </div>
                     }
+
+                    <div id="commentsList">
+                        @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
+                        {
+                            <div class="comment mb-3">
+                                <div class="d-flex">
+                                    <img src="@(string.IsNullOrEmpty(comment.User.Image) ? "/img/profiles/default.jpg" : comment.User.Image)" 
+                                         class="rounded-circle me-2" 
+                                         style="width: 40px; height: 40px; object-fit: cover;" 
+                                         alt="@comment.User.UserName">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="mb-1"><a href="/users/@comment.User.UserName" class="text-decoration-none">@comment.User.UserName</a></h6>
+                                            <small class="text-muted">@comment.CreatedAt.ToString("dd MMM yyyy HH:mm")</small>
+                                        </div>
+                                        <p class="mb-1">@comment.Content</p>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
                 </div>
-            }
-            else
-            {
-                <div class="alert alert-danger">
-                    Blog yazısı bulunamadı.
-                </div>
-            }
-        </div>
-        <div class="col-md-4">
-            @await Component.InvokeAsync("TagsMenu")
-            @await Component.InvokeAsync("NewPosts")
+            </article>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        async function submitComment(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-            const button = form.querySelector('button[type="submit"]');
-            const spinner = button.querySelector('.spinner-border');
-            const buttonText = button.querySelector('.button-text');
-            
-            // Disable button and show spinner
-            button.disabled = true;
-            spinner.classList.remove('d-none');
-            buttonText.textContent = 'Gönderiliyor...';
+        function addReaction(postId, isLike) {
+            @if (!User.Identity.IsAuthenticated)
+            {
+                <text>
+                window.location.href = '/Users/Login';
+                return;
+                </text>
+            }
 
-            try {
-                const response = await fetch('/Posts/AddComment', {
-                    method: 'POST',
-                    body: new FormData(form),
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    // Add comment to the list
-                    const commentsList = document.getElementById('comments-list');
-                    const commentHtml = `
-                        <div class="comment mb-3">
-                            <div class="d-flex">
-                                <img src="/img/${result.comment.userImage}" class="rounded-circle me-2" alt="${result.comment.userName}" style="width: 40px; height: 40px; object-fit: cover;">
-                                <div>
-                                    <h6 class="mb-0">${result.comment.userName}</h6>
-                                    <small class="text-muted">${result.comment.publishedOn}</small>
-                                    <p class="mb-0">${result.comment.content}</p>
-                                </div>
-                            </div>
-                        </div>`;
-                    commentsList.insertAdjacentHTML('afterbegin', commentHtml);
-                    
-                    // Clear form
-                    form.reset();
-                    
-                    // Show success message
-                    showToast('success', 'Yorumunuz başarıyla eklendi.');
-                    
-                    // Update comment count
-                    const countElement = document.getElementById('comment-count');
-                    const currentCount = parseInt(countElement.textContent);
-                    countElement.textContent = currentCount + 1;
+            fetch('/Posts/AddReaction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                },
+                body: JSON.stringify({
+                    postId: postId,
+                    isLike: isLike
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
                 } else {
-                    showToast('error', result.message);
+                    alert(data.message || 'Bir hata oluştu');
                 }
-            } catch (error) {
-                showToast('error', 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
-            } finally {
-                // Re-enable button and hide spinner
-                button.disabled = false;
-                spinner.classList.add('d-none');
-                buttonText.textContent = 'Yorum Yap';
-            }
-
-            return false;
-        }
-
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast('success', 'Bağlantı kopyalandı!');
-            }).catch(() => {
-                showToast('error', 'Bağlantı kopyalanamadı.');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Bir hata oluştu');
             });
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const reactionButtons = document.querySelectorAll('.reaction-buttons');
+        document.getElementById('commentForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const content = document.getElementById('commentContent').value;
             
-            reactionButtons.forEach(container => {
-                const postId = container.dataset.postId;
-                const likeBtn = container.querySelector('.like-button');
-                const dislikeBtn = container.querySelector('.dislike-button');
-                
-                likeBtn.addEventListener('click', () => handleReaction(postId, true));
-                dislikeBtn.addEventListener('click', () => handleReaction(postId, false));
-            });
-            
-            async function handleReaction(postId, isLike) {
-                try {
-                    const response = await fetch('/Posts/React', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                        },
-                        body: JSON.stringify({ postId, isLike })
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        const container = document.querySelector(`[data-post-id="${postId}"]`);
-                        const likeBtn = container.querySelector('.like-button');
-                        const dislikeBtn = container.querySelector('.dislike-button');
-                        
-                        likeBtn.querySelector('.likes-count').textContent = data.likes;
-                        dislikeBtn.querySelector('.dislikes-count').textContent = data.dislikes;
-                        
-                        likeBtn.classList.toggle('active', data.userReaction === true);
-                        dislikeBtn.classList.toggle('active', data.userReaction === false);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                }
+            if (!content || content.trim() === '') {
+                alert('Lütfen bir yorum yazın');
+                return;
             }
+
+            fetch('/Posts/AddComment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                },
+                body: JSON.stringify({
+                    postId: @Model.PostId,
+                    content: content
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'Bir hata oluştu');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Bir hata oluştu');
+            });
         });
     </script>
 } 

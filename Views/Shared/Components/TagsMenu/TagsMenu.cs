@@ -12,8 +12,9 @@ public class TagsMenu : ViewComponent
         _tagRepository = tagRepository;
     }
 
-    public IViewComponentResult Invoke()
+    public async Task<IViewComponentResult> InvokeAsync()
     {
-        return View(_tagRepository.Tags.ToList());
+        var tags = await _tagRepository.GetAllAsync();
+        return View(tags);
     }
 } 

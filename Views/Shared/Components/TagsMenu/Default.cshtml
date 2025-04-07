@@ -1,17 +1,51 @@
 @model List<BlogApp.Entity.Tag>
 
-<div class="card">
-    <div class="card-header">
-        <h5 class="card-title">Etiketler</h5>
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Etiketler</h5>
+        <a href="/Tags" class="btn btn-sm btn-outline-primary">Tümünü Gör <i class="bi bi-arrow-right"></i></a>
     </div>
     <div class="card-body">
-        <ul class="list-inline d-flex flex-wrap gap-2">
-            @foreach (var tag in Model)
+        <div id="tagsContainer" class="d-flex flex-wrap gap-2">
+            @foreach (var tag in Model.Take(10))
             {
-                <li class="list-inline-item">
-                    <a href="/posts/tag/@tag.Url" class="btn btn-outline-@tag.Color?.ToString().ToLower() btn-sm">@tag.Name</a>
-                </li>
+                string tagColor = tag.Color?.ToString().ToLower() ?? "secondary";
+                // Info tag ve diğer açık renkli etiketler için metin rengini ayarlama
+                string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
+                <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none">@tag.Name</a>
             }
-        </ul>
+        </div>
+        @if (Model.Count > 10)
+        {
+            <button id="showMoreTags" class="btn btn-sm btn-link d-block mt-2">Daha Fazla Göster</button>
+            <div id="extraTags" class="d-none mt-2">
+                @foreach (var tag in Model.Skip(10))
+                {
+                    string tagColor = tag.Color?.ToString().ToLower() ?? "secondary";
+                    // Info tag ve diğer açık renkli etiketler için metin rengini ayarlama
+                    string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
+                    <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none me-1 mb-1">@tag.Name</a>
+                }
+            </div>
+        }
     </div>
-</div> 
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const showMoreButton = document.getElementById('showMoreTags');
+        const extraTags = document.getElementById('extraTags');
+        
+        if (showMoreButton) {
+            showMoreButton.addEventListener('click', function() {
+                if (extraTags.classList.contains('d-none')) {
+                    extraTags.classList.remove('d-none');
+                    showMoreButton.textContent = 'Daha Az Göster';
+                } else {
+                    extraTags.classList.add('d-none');
+                    showMoreButton.textContent = 'Daha Fazla Göster';
+                }
+            });
+        }
+    });
+</script> 

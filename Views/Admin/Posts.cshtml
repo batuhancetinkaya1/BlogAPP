@@ -1,0 +1,340 @@
+@model List<BlogApp.Entity.Post>
+@using BlogApp.Entity
+
+@{
+    ViewData["Title"] = "Yazıları Yönet";
+}
+
+<div class="container">
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="card-title mb-0">@ViewData["Title"]</h2>
+                <a asp-controller="Posts" asp-action="Create" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-2"></i>Yeni Yazı
+                </a>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Yazı ara..." value="@ViewBag.SearchTerm">
+                        <button class="btn btn-outline-primary" type="button" id="searchButton">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex gap-2">
+                        <select id="statusFilter" class="form-select">
+                            <option value="">Tüm Durumlar</option>
+                            <option value="@PostStatus.Draft">Taslak</option>
+                            <option value="@PostStatus.Published">Yayında</option>
+                            <option value="@PostStatus.Scheduled">Zamanlanmış</option>
+                            <option value="@PostStatus.Archived">Arşivlenmiş</option>
+                        </select>
+                        <select id="sortOrder" class="form-select">
+                            <option value="date-desc">Tarihe Göre (Yeni-Eski)</option>
+                            <option value="date-asc">Tarihe Göre (Eski-Yeni)</option>
+                            <option value="title-asc">Başlığa Göre (A-Z)</option>
+                            <option value="title-desc">Başlığa Göre (Z-A)</option>
+                            <option value="comments-desc">Yorum Sayısına Göre</option>
+                            <option value="likes-desc">Beğeni Sayısına Göre</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <form id="bulkActionForm" method="post">
+                <div class="table-responsive">
+                    <div class="bulk-actions mb-3 d-none">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-outline-primary" onclick="bulkAction('publish')">
+                                <i class="bi bi-check-circle me-2"></i>Yayınla
+                            </button>
+                            <button type="button" class="btn btn-outline-info" onclick="bulkAction('archive')">
+                                <i class="bi bi-archive me-2"></i>Arşivle
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" onclick="bulkAction('delete')">
+                                <i class="bi bi-trash me-2"></i>Sil
+                            </button>
+                        </div>
+                        <span class="ms-3 text-muted">
+                            <span id="selectedCount">0</span> öğe seçildi
+                        </span>
+                    </div>
+
+                    <table class="table table-hover" id="postsTable">
+                        <thead>
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" class="form-check-input" id="selectAll">
+                                </th>
+                                <th>Başlık</th>
+                                <th>Yazar</th>
+                                <th>Durum</th>
+                                <th>Tarih</th>
+                                <th>Etkileşim</th>
+                                <th width="150">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var post in Model)
+                            {
+                                <tr class="post-row" 
+                                    data-status="@post.Status" 
+                                    data-title="@post.Title" 
+                                    data-date="@post.CreatedAt.Ticks" 
+                                    data-comments="@post.Comments.Count" 
+                                    data-likes="@post.Reactions.Count(r => r.IsLike)">
+                                    <td>
+                                        <input type="checkbox" class="form-check-input post-checkbox" 
+                                               name="selectedPosts" value="@post.PostId">
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            @if (!string.IsNullOrEmpty(post.Image))
+                                            {
+                                                <img src="@post.Image" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                            }
+                                            else
+                                            {
+                                                <img src="/img/posts/default.jpg" class="rounded me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                            }
+                                            <div>
+                                                <a href="/posts/@post.Url" class="text-decoration-none">@post.Title</a>
+                                                @if (!string.IsNullOrEmpty(post.Description))
+                                                {
+                                                    <div class="small text-muted">@(post.Description.Length > 60 ? post.Description.Substring(0, 60) + "..." : post.Description)</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="/users/@post.User.UserName" class="text-decoration-none">@post.User.UserName</a>
+                                    </td>
+                                    <td>
+                                        @switch (post.Status)
+                                        {
+                                            case PostStatus.Draft:
+                                                <span class="badge bg-secondary">Taslak</span>
+                                                break;
+                                            case PostStatus.Published:
+                                                <span class="badge bg-success">Yayında</span>
+                                                break;
+                                            case PostStatus.Scheduled:
+                                                <span class="badge bg-info">Zamanlanmış</span>
+                                                break;
+                                            case PostStatus.Archived:
+                                                <span class="badge bg-dark">Arşivlenmiş</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>@post.CreatedAt.ToString("dd.MM.yyyy HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-3">
+                                            <span title="Beğeni"><i class="bi bi-hand-thumbs-up me-1"></i>@post.Reactions.Count(r => r.IsLike)</span>
+                                            <span title="Yorum"><i class="bi bi-chat me-1"></i>@post.Comments.Count</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="/posts/edit/@post.PostId" class="btn btn-sm btn-outline-primary" title="Düzenle">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="/posts/@post.Url" class="btn btn-sm btn-outline-info" title="Görüntüle" target="_blank">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Sil" onclick="confirmDelete(@post.PostId)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+
+            <!-- Pagination -->
+            @if (ViewBag.TotalPages > 1)
+            {
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                                <a class="page-link" href="/admin/posts?page=@i&searchTerm=@ViewBag.SearchTerm">@i</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yazıyı Sil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bu yazıyı silmek istediğinizden emin misiniz?</p>
+                <p class="text-danger"><small>Bu işlem geri alınamaz.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <form asp-controller="Posts" asp-action="Delete" method="post" class="d-inline">
+                    <input type="hidden" name="id" id="postIdToDelete">
+                    <button type="submit" class="btn btn-danger">Sil</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toplu seçim işlemleri
+            document.getElementById('selectAll').addEventListener('change', function() {
+                document.querySelectorAll('.post-checkbox').forEach(cb => {
+                    cb.checked = this.checked;
+                });
+                updateSelectedCount();
+            });
+
+            document.querySelectorAll('.post-checkbox').forEach(cb => {
+                cb.addEventListener('change', updateSelectedCount);
+            });
+
+            // Arama işlemi
+            document.getElementById('searchButton').addEventListener('click', function() {
+                const searchTerm = document.getElementById('searchInput').value;
+                window.location.href = `/admin/posts?searchTerm=${encodeURIComponent(searchTerm)}`;
+            });
+
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('searchButton').click();
+                }
+            });
+
+            // Filtreleme ve sıralama
+            document.getElementById('statusFilter').addEventListener('change', filterAndSortPosts);
+            document.getElementById('sortOrder').addEventListener('change', filterAndSortPosts);
+        });
+
+        function updateSelectedCount() {
+            const count = document.querySelectorAll('.post-checkbox:checked').length;
+            document.getElementById('selectedCount').textContent = count;
+            document.querySelector('.bulk-actions').classList.toggle('d-none', count === 0);
+        }
+
+        function confirmDelete(postId) {
+            document.getElementById('postIdToDelete').value = postId;
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            deleteModal.show();
+        }
+
+        function bulkAction(action) {
+            const selectedPosts = Array.from(document.querySelectorAll('.post-checkbox:checked'))
+                .map(cb => parseInt(cb.value));
+
+            if (selectedPosts.length === 0) {
+                alert('Lütfen en az bir yazı seçin.');
+                return;
+            }
+
+            let confirmMessage = '';
+            let url = '';
+
+            switch(action) {
+                case 'publish':
+                    confirmMessage = 'Seçilen yazıları yayınlamak istediğinize emin misiniz?';
+                    url = '/posts/bulkpublish';
+                    break;
+                case 'archive':
+                    confirmMessage = 'Seçilen yazıları arşivlemek istediğinize emin misiniz?';
+                    url = '/posts/bulkarchive';
+                    break;
+                case 'delete':
+                    confirmMessage = 'Seçilen yazıları silmek istediğinize emin misiniz?\nBu işlem geri alınamaz!';
+                    url = '/posts/bulkdelete';
+                    break;
+            }
+
+            if (confirm(confirmMessage)) {
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: JSON.stringify({ ids: selectedPosts })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('İşlem sırasında bir hata oluştu.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('İşlem sırasında bir hata oluştu.');
+                });
+            }
+        }
+
+        function filterAndSortPosts() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+            const rows = document.querySelectorAll('#postsTable tbody tr');
+            
+            // Filter rows
+            rows.forEach(row => {
+                const status = row.getAttribute('data-status');
+                if (statusFilter === '' || status === statusFilter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Sort visible rows
+            const visibleRows = Array.from(rows).filter(row => row.style.display !== 'none');
+            
+            visibleRows.sort((a, b) => {
+                switch(sortOrder) {
+                    case 'date-desc':
+                        return parseInt(b.getAttribute('data-date')) - parseInt(a.getAttribute('data-date'));
+                    case 'date-asc':
+                        return parseInt(a.getAttribute('data-date')) - parseInt(b.getAttribute('data-date'));
+                    case 'title-asc':
+                        return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
+                    case 'title-desc':
+                        return b.getAttribute('data-title').localeCompare(a.getAttribute('data-title'));
+                    case 'comments-desc':
+                        return parseInt(b.getAttribute('data-comments')) - parseInt(a.getAttribute('data-comments'));
+                    case 'likes-desc':
+                        return parseInt(b.getAttribute('data-likes')) - parseInt(a.getAttribute('data-likes'));
+                }
+            });
+            
+            const tbody = document.querySelector('#postsTable tbody');
+            visibleRows.forEach(row => {
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+} 

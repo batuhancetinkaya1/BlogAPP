@@ -1,4 +1,5 @@
 @model BlogApp.Models.PostEditViewModel
+@using BlogApp.Entity
 
 @{
     ViewData["Title"] = "Yazı Düzenle";
@@ -34,57 +35,79 @@
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="ImageFile" class="form-label">Kapak Resmi</label>
-                            <input asp-for="ImageFile" class="form-control" type="file" accept="image/*" />
+                            <label asp-for="ImageFile" class="form-label">Kapak Görseli</label>
+                            <input asp-for="ImageFile" class="form-control" />
                             <span asp-validation-for="ImageFile" class="text-danger"></span>
                             @if (!string.IsNullOrEmpty(Model.Image))
                             {
                                 <div class="mt-2">
-                                    <img src="/img/@Model.Image" class="img-thumbnail" style="max-height: 200px;" />
+                                    <img src="@Model.Image" alt="Mevcut görsel" class="img-thumbnail" style="max-width: 200px" />
                                 </div>
                             }
                         </div>
-
+                        
                         <div class="mb-3">
                             <label asp-for="SelectedTagIds" class="form-label">Etiketler</label>
-                            <select asp-for="SelectedTagIds" class="form-select" multiple>
-                                @foreach (var tag in Model.AvailableTags)
+                            <div class="row">
+                                @foreach (var tag in ViewBag.Tags)
                                 {
-                                    <option value="@tag.TagId">@tag.Name</option>
+                                    <div class="col-md-4 mb-2">
+                                        <div class="form-check">
+                                            <input type="checkbox" 
+                                                   name="tagIds" 
+                                                   value="@tag.TagId" 
+                                                   class="form-check-input" 
+                                                   id="tag-@tag.TagId" 
+                                                   @(Model.SelectedTagIds.Contains(tag.TagId) ? "checked" : "") />
+                                            <label class="form-check-label" for="tag-@tag.TagId">
+                                                <span class="badge bg-@(tag.Color.HasValue ? tag.Color.Value.ToString().ToLower() : "secondary")">@tag.Name</span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 }
-                            </select>
-                            <span asp-validation-for="SelectedTagIds" class="text-danger"></span>
+                            </div>
                         </div>
 
                         <div class="mb-3">
                             <label asp-for="Status" class="form-label">Durum</label>
                             <select asp-for="Status" class="form-select">
-                                <option value="Draft">Taslak</option>
-                                <option value="Published">Yayında</option>
-                                <option value="Scheduled">Planlandı</option>
-                                <option value="Archived">Arşivlenmiş</option>
+                                <option value="0">Taslak</option>
+                                <option value="1">Yayında</option>
+                                <option value="2">Zamanlanmış</option>
+                                <option value="3">Arşivlenmiş</option>
                             </select>
                             <span asp-validation-for="Status" class="text-danger"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="ScheduledPublishTime" class="form-label">Planlanan Yayın Tarihi</label>
+                        <div class="mb-3" id="scheduleBlock" style="display: @(Model.Status == PostStatus.Scheduled ? "block" : "none");">
+                            <label asp-for="ScheduledPublishTime" class="form-label">Yayın Zamanı</label>
                             <input asp-for="ScheduledPublishTime" class="form-control" type="datetime-local" />
                             <span asp-validation-for="ScheduledPublishTime" class="text-danger"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input asp-for="IsActive" class="form-check-input" />
-                                <label asp-for="IsActive" class="form-check-label">Aktif</label>
-                            </div>
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsActive" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label">Aktif</label>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a asp-action="Index" class="btn btn-secondary">Geri Dön</a>
-                            <button type="submit" class="btn btn-primary">Kaydet</button>
-                        </div>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                        <a asp-action="Details" asp-route-url="@Model.Url" class="btn btn-secondary">İptal</a>
                     </form>
+
+                    @if (Model.Status == PostStatus.Draft)
+                    {
+                        <div class="mt-3">
+                            <hr />
+                            <h5><i class="bi bi-check-circle-fill text-success"></i> Yayınlama Seçenekleri</h5>
+                            <form asp-action="Publish" asp-route-id="@Model.PostId" method="post" class="mt-2">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-check-circle"></i> Hemen Yayınla
+                                </button>
+                                <small class="text-muted d-block mt-1">Bu yazı taslak halindedir. Yayınlamak için "Hemen Yayınla" butonuna tıklayın.</small>
+                            </form>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -116,5 +139,14 @@
             .catch(error => {
                 console.error(error);
             });
+            
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusSelect = document.getElementById('Status');
+            const scheduleBlock = document.getElementById('scheduleBlock');
+            
+            statusSelect.addEventListener('change', function() {
+                scheduleBlock.style.display = this.value === '2' ? 'block' : 'none';
+            });
+        });
     </script>
 } 

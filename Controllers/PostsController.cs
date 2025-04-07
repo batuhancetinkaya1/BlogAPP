@@ -1,5 +1,5 @@
 using BlogApp.Entity;
-using BlogApp.Models;
+using BlogApp.Models.ViewModels;
 using BlogApp.Data.Abstract;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Http;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Diagnostics;
+using System.Diagnostics;
 
 namespace BlogApp.Controllers;
 
@@ -30,98 +32,182 @@ public class PostsController : Controller
         _userRepository = userRepository;
     }
 
-    public IActionResult Index(string tag = null)
+    public async Task<IActionResult> Index(string tag = null, string sort = "date", int page = 1)
     {
-        var query = _postRepository.Posts
-            .Include(p => p.User)
-            .Include(p => p.Tags)
-            .Include(p => p.Comments)
-            .Include(p => p.Reactions)
-            .Where(p => p.Status == PostStatus.Published);
+        var posts = await _postRepository.GetAllWithDetailsAsync();
+        // Sadece yayında olan yazıları göster
+        posts = posts.Where(p => p.Status == PostStatus.Published && p.PublishedOn != null).ToList();
 
         if (!string.IsNullOrEmpty(tag))
         {
-            query = query.Where(p => p.Tags.Any(t => t.Url == tag));
+            var tagObj = await _tagRepository.GetByUrlAsync(tag);
+            if (tagObj != null)
+            {
+                posts = posts.Where(p => p.Tags.Any(t => t.TagId == tagObj.TagId)).ToList();
+            }
         }
 
-        var posts = query.OrderByDescending(p => p.PublishedOn).ToList();
-        return View(posts);
+        // Apply sorting
+        posts = sort switch
+        {
+            "title" => posts.OrderBy((Post p) => p.Title).ToList(),
+            "likes" => posts.OrderByDescending((Post p) => p.Reactions.Count(r => r.IsLike)).ToList(),
+            "comments" => posts.OrderByDescending((Post p) => p.Comments.Count).ToList(),
+            _ => posts.OrderByDescending((Post p) => p.CreatedAt).ToList()
+        };
+
+        int pageSize = 6;
+        var pagedPosts = posts.Skip((page - 1) * pageSize)
+                          .Take(pageSize)
+                          .ToList();
+
+        var totalPosts = posts.Count;
+        var totalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
+
+        var model = new PostListViewModel
+        {
+            Posts = pagedPosts,
+            CurrentPage = page,
+            TotalPages = totalPages,
+            CurrentSort = sort,
+            CurrentTag = tag
+        };
+
+        return View(model);
     }
 
-    public IActionResult Details(string url)
+    [Route("posts/{url}")]
+    public async Task<IActionResult> Details(string url)
     {
-        var post = _postRepository.Posts
-            .Include(p => p.User)
-            .Include(p => p.Tags)
-            .Include(p => p.Comments)
-                .ThenInclude(c => c.User)
-            .Include(p => p.Reactions)
-            .FirstOrDefault(p => p.Url == url && p.Status == PostStatus.Published);
-
+        // Since we don't have GetByUrlAsync in the interface, we'll need to retrieve all posts
+        // and filter by URL
+        var posts = await _postRepository.GetAllAsync();
+        var post = posts.FirstOrDefault(p => p.Url == url);
+        
         if (post == null)
         {
             return NotFound();
+        }
+
+        // Eğer resim yoksa varsayılan resmi kullan
+        if (string.IsNullOrEmpty(post.Image))
+        {
+            post.Image = "/img/posts/default.jpg";
         }
 
         return View(post);
     }
 
     [Authorize]
-    public IActionResult Create()
+    [HttpGet]
+    [Route("Posts/Create")]
+    public async Task<IActionResult> Create()
     {
-        ViewBag.Tags = _tagRepository.Tags.ToList();
-        return View(new PostCreateViewModel());
+        ViewBag.Tags = await _tagRepository.GetAllAsync();
+        return View(new Models.PostCreateViewModel());
     }
 
     [Authorize]
     [HttpPost]
-    public async Task<IActionResult> Create(PostCreateViewModel model, IFormFile? imageFile)
+    [Route("Posts/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(Models.PostCreateViewModel model, bool directPublish = false)
     {
-        if (ModelState.IsValid)
+        Console.WriteLine($"Create Post metodu çağrıldı. directPublish: {directPublish}");
+        
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Tags = await _tagRepository.GetAllAsync();
+            return View(model);
+        }
+
+        try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var user = _userRepository.GetById(userId);
+            var user = await _userRepository.GetByIdAsync(userId);
+
             if (user == null)
             {
-                return NotFound();
+                TempData["error"] = "Kullanıcı bulunamadı. Lütfen tekrar giriş yapın.";
+                return RedirectToAction("Login", "Users");
+            }
+
+            // Eğer directPublish true ise IsDraft false olarak ayarla
+            if (directPublish)
+            {
+                model.IsDraft = false;
             }
 
             var post = new Post
             {
                 Title = model.Title,
                 Content = model.Content,
-                Description = model.Description,
-                Url = GenerateUrl(model.Title),
+                Description = model.Description ?? "",
+                VideoUrl = model.VideoUrl,
+                Keywords = model.Keywords,
+                ReadTime = model.ReadTime,
                 UserId = userId,
+                User = user,
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true,
-                Status = model.Status,
-                ScheduledPublishTime = model.ScheduledPublishTime
+                Status = directPublish ? PostStatus.Published : (model.IsDraft ? PostStatus.Draft : PostStatus.Published),
+                IsActive = model.IsActive
             };
 
-            if (model.ScheduledPublishTime.HasValue)
+            // Handle URL generation
+            if (string.IsNullOrEmpty(model.Url))
+            {
+                post.Url = GenerateUrl(model.Title);
+            }
+            else
+            {
+                post.Url = GenerateUrl(model.Url);
+            }
+
+            // Handle scheduling
+            if (!directPublish && !model.IsDraft && model.ScheduledPublishTime.HasValue)
             {
                 post.Status = PostStatus.Scheduled;
+                post.ScheduledPublishTime = model.ScheduledPublishTime;
+            }
+            else if (directPublish || (!model.IsDraft && !model.ScheduledPublishTime.HasValue))
+            {
+                post.Status = PostStatus.Published;
+                post.PublishedOn = DateTime.UtcNow;
             }
 
             // Handle image upload
-            if (imageFile != null)
+            if (model.ImageFile != null && model.ImageFile.Length > 0)
             {
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName);
-                var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", fileName);
-                using (var stream = new FileStream(path, FileMode.Create))
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "posts");
+                if (!Directory.Exists(uploadsFolder))
                 {
-                    await imageFile.CopyToAsync(stream);
+                    Directory.CreateDirectory(uploadsFolder);
                 }
-                post.Image = fileName;
+
+                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(model.ImageFile.FileName);
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await model.ImageFile.CopyToAsync(fileStream);
+                }
+
+                post.Image = "/img/posts/" + uniqueFileName;
+            }
+            else
+            {
+                // Resim yüklenmezse varsayılan resmi kullan
+                post.Image = "/img/posts/default.jpg";
             }
 
-            // Add selected tags
-            if (model.SelectedTagIds != null)
+            // Handle tags
+            if (model.SelectedTagIds != null && model.SelectedTagIds.Count > 0)
             {
+                post.Tags = new List<Tag>();
+                var allTags = await _tagRepository.GetAllAsync();
                 foreach (var tagId in model.SelectedTagIds)
                 {
-                    var tag = _tagRepository.GetById(tagId);
+                    var tag = allTags.FirstOrDefault(t => t.TagId == tagId);
                     if (tag != null)
                     {
                         post.Tags.Add(tag);
@@ -129,34 +215,36 @@ public class PostsController : Controller
                 }
             }
 
-            _postRepository.CreatePost(post);
-            await _postRepository.SaveChangesAsync();
-
-            TempData["success"] = "Yazı başarıyla oluşturuldu.";
+            await _postRepository.AddAsync(post);
+            TempData["success"] = "Blog yazısı başarıyla oluşturuldu.";
             return RedirectToAction(nameof(Details), new { url = post.Url });
         }
-
-        // If we got this far, something failed, redisplay form
-        ViewBag.Tags = _tagRepository.Tags.ToList();
-        return View(model);
+        catch (Exception ex)
+        {
+            // Log the error
+            Console.WriteLine($"Blog yazısı oluşturma hatası: {ex.Message}");
+            
+            // Return to form with errors
+            TempData["error"] = $"Blog yazısı oluşturulurken bir hata oluştu: {ex.Message}";
+            ViewBag.Tags = await _tagRepository.GetAllAsync();
+            return View(model);
+        }
     }
 
     [Authorize]
-    public IActionResult Edit(int id)
+    public async Task<IActionResult> Edit(int id)
     {
-        var post = _postRepository.GetById(id);
-        if (post == null)
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var post = await _postRepository.GetByIdAsync(id);
+
+        if (post == null || post.UserId != userId && !User.IsInRole("Admin"))
         {
             return NotFound();
         }
 
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        if (post.UserId != userId && !User.IsInRole("Admin"))
-        {
-            return Forbid();
-        }
-
-        var model = new PostEditViewModel
+        var selectedTagIds = post.Tags?.Select(t => t.TagId).ToList() ?? new List<int>();
+        
+        var model = new Models.PostEditViewModel
         {
             PostId = post.PostId,
             Title = post.Title,
@@ -164,410 +252,516 @@ public class PostsController : Controller
             Description = post.Description,
             Image = post.Image,
             Url = post.Url,
+            IsActive = post.IsActive,
             Status = post.Status,
             ScheduledPublishTime = post.ScheduledPublishTime,
-            SelectedTagIds = post.Tags.Select(t => t.TagId).ToList(),
             CreatedAt = post.CreatedAt,
             PublishedOn = post.PublishedOn,
-            IsActive = post.IsActive,
-            AvailableTags = _tagRepository.Tags.ToList()
+            SelectedTagIds = selectedTagIds
         };
-
+        
+        ViewBag.Tags = await _tagRepository.GetAllAsync();
         return View(model);
     }
 
     [Authorize]
     [HttpPost]
-    public async Task<IActionResult> Edit(int id, PostEditViewModel model, IFormFile? imageFile)
+    public async Task<IActionResult> Edit(int id, Models.PostEditViewModel model)
     {
-        if (ModelState.IsValid)
+        if (id != model.PostId)
         {
-            var post = _postRepository.GetById(id);
-            if (post == null)
+            return NotFound();
+        }
+
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var existingPost = await _postRepository.GetByIdAsync(id);
+
+        if (existingPost == null || (existingPost.UserId != userId && !User.IsInRole("Admin")))
+        {
+            return NotFound();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Tags = await _tagRepository.GetAllAsync();
+            return View(model);
+        }
+
+        existingPost.Title = model.Title;
+        existingPost.Content = model.Content;
+        existingPost.Description = model.Description ?? "";
+        existingPost.Url = GenerateUrl(model.Title);
+        existingPost.IsActive = model.IsActive;
+        existingPost.Status = model.Status;
+
+        // Handle scheduling
+        if (model.Status == PostStatus.Scheduled && model.ScheduledPublishTime.HasValue)
+        {
+            existingPost.ScheduledPublishTime = model.ScheduledPublishTime;
+        }
+        else if (model.Status == PostStatus.Published && existingPost.Status != PostStatus.Published)
+        {
+            existingPost.PublishedOn = DateTime.UtcNow;
+        }
+
+        // Handle image upload
+        if (model.ImageFile != null && model.ImageFile.Length > 0)
+        {
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "posts");
+            if (!Directory.Exists(uploadsFolder))
             {
-                return NotFound();
+                Directory.CreateDirectory(uploadsFolder);
             }
 
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (post.UserId != userId && !User.IsInRole("Admin"))
+            // Delete old image if exists and not default image
+            if (!string.IsNullOrEmpty(existingPost.Image) && !existingPost.Image.EndsWith("default.jpg"))
             {
-                return Forbid();
-            }
-
-            post.Title = model.Title;
-            post.Content = model.Content;
-            post.Description = model.Description;
-            post.Url = model.Url;
-            post.Status = model.Status;
-            post.IsActive = model.IsActive;
-            post.ScheduledPublishTime = model.ScheduledPublishTime;
-
-            if (model.ScheduledPublishTime.HasValue)
-            {
-                post.Status = PostStatus.Scheduled;
-            }
-
-            // Handle image upload
-            if (imageFile != null)
-            {
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName);
-                var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/img", fileName);
-                using (var stream = new FileStream(path, FileMode.Create))
+                var oldImagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", existingPost.Image.TrimStart('/'));
+                if (System.IO.File.Exists(oldImagePath))
                 {
-                    await imageFile.CopyToAsync(stream);
-                }
-                post.Image = fileName;
-            }
-
-            // Update tags
-            post.Tags.Clear();
-            if (model.SelectedTagIds != null)
-            {
-                foreach (var tagId in model.SelectedTagIds)
-                {
-                    var tag = _tagRepository.GetById(tagId);
-                    if (tag != null)
+                    try
                     {
-                        post.Tags.Add(tag);
+                        System.IO.File.Delete(oldImagePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but continue
+                        Console.WriteLine($"Eski resim silinirken hata oluştu: {ex.Message}");
                     }
                 }
             }
 
-            _postRepository.EditPost(post);
-            await _postRepository.SaveChangesAsync();
+            var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(model.ImageFile.FileName);
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-            TempData["success"] = "Yazı başarıyla güncellendi.";
-            return RedirectToAction(nameof(Details), new { url = post.Url });
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await model.ImageFile.CopyToAsync(fileStream);
+            }
+
+            existingPost.Image = "/img/posts/" + uniqueFileName;
+        }
+        else if (string.IsNullOrEmpty(existingPost.Image))
+        {
+            // Eğer mevcut resim yoksa ve yeni resim yüklenmediyse, varsayılan resmi kullan
+            existingPost.Image = "/img/posts/default.jpg";
         }
 
-        // If we got this far, something failed, redisplay form
-        model.AvailableTags = _tagRepository.Tags.ToList();
-        return View(model);
+        // Update tags
+        if (model.SelectedTagIds != null && model.SelectedTagIds.Count > 0)
+        {
+            existingPost.Tags = new List<Tag>();
+            var allTags = await _tagRepository.GetAllAsync();
+            foreach (var tagId in model.SelectedTagIds)
+            {
+                var tag = allTags.FirstOrDefault(t => t.TagId == tagId);
+                if (tag != null)
+                {
+                    existingPost.Tags.Add(tag);
+                }
+            }
+        }
+        else
+        {
+            existingPost.Tags = new List<Tag>();
+        }
+
+        await _postRepository.UpdateAsync(existingPost);
+        TempData["success"] = "Yazı başarıyla güncellendi.";
+        return RedirectToAction(nameof(Details), new { url = existingPost.Url });
     }
 
     [Authorize]
+    [HttpPost]
     public async Task<IActionResult> Delete(int id)
     {
-        var post = _postRepository.GetById(id);
-        if (post == null)
-        {
-            return NotFound();
-        }
-
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        if (post.UserId != userId && !User.IsInRole("Admin"))
+        var post = await _postRepository.GetByIdAsync(id);
+
+        if (post == null || post.UserId != userId)
         {
-            return Forbid();
+            return Json(new { success = false, message = "Yazı bulunamadı veya silme yetkiniz yok." });
         }
 
-        _postRepository.DeletePost(id);
-        await _postRepository.SaveChangesAsync();
-
-        TempData["success"] = "Yazı başarıyla silindi.";
-        return RedirectToAction(nameof(Index));
+        await _postRepository.DeleteAsync(post);
+        return Json(new { success = true });
     }
 
     [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Publish(int id)
     {
-        var post = _postRepository.GetById(id);
+        var post = await _postRepository.GetByIdAsync(id);
         if (post == null)
         {
             return NotFound();
         }
 
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        if (post.UserId != userId && !User.IsInRole("Admin"))
+        // Kullanıcının yetkili olup olmadığını kontrol et
+        if (!User.IsInRole("Admin") && post.UserId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value))
         {
             return Forbid();
         }
 
         post.Status = PostStatus.Published;
         post.PublishedOn = DateTime.UtcNow;
-        _postRepository.EditPost(post);
-        await _postRepository.SaveChangesAsync();
+        await _postRepository.UpdateAsync(post);
 
         TempData["success"] = "Yazı başarıyla yayınlandı.";
-        return RedirectToAction(nameof(Details), new { url = post.Url });
+        return RedirectToAction("Details", "Posts", new { url = post.Url });
     }
 
     [Authorize]
     public async Task<IActionResult> Archive(int id)
     {
-        var post = _postRepository.GetById(id);
+        var post = await _postRepository.GetByIdAsync(id);
         if (post == null)
         {
             return NotFound();
         }
 
+        // Check permissions
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         if (post.UserId != userId && !User.IsInRole("Admin"))
         {
             return Forbid();
         }
 
-        post.Status = PostStatus.Archived;
-        _postRepository.EditPost(post);
-        await _postRepository.SaveChangesAsync();
+        await _postRepository.UpdateAsync(post);
 
-        TempData["success"] = "Yazı başarıyla arşivlendi.";
         return RedirectToAction(nameof(Details), new { url = post.Url });
     }
 
     [Authorize]
+    [HttpPost]
     public async Task<IActionResult> BulkDelete(int[] ids)
     {
-        foreach (var id in ids)
+        if (ids == null || ids.Length == 0)
         {
-            var post = _postRepository.GetById(id);
+            return BadRequest("No posts selected.");
+        }
+
+        foreach (var postId in ids)
+        {
+            var post = await _postRepository.GetByIdAsync(postId);
             if (post != null)
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 if (post.UserId == userId || User.IsInRole("Admin"))
                 {
-                    _postRepository.DeletePost(id);
+                    await _postRepository.DeleteAsync(post);
                 }
             }
         }
 
-        await _postRepository.SaveChangesAsync();
-        TempData["success"] = "Seçili yazılar başarıyla silindi.";
-        return RedirectToAction(nameof(List));
+        return Json(new { success = true });
     }
 
     [Authorize]
+    [HttpPost]
     public async Task<IActionResult> BulkPublish(int[] ids)
     {
-        foreach (var id in ids)
+        if (ids == null || ids.Length == 0)
         {
-            var post = _postRepository.GetById(id);
+            return BadRequest("No posts selected.");
+        }
+
+        foreach (var postId in ids)
+        {
+            var post = await _postRepository.GetByIdAsync(postId);
             if (post != null)
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 if (post.UserId == userId || User.IsInRole("Admin"))
                 {
-                    post.Status = PostStatus.Published;
-                    post.PublishedOn = DateTime.UtcNow;
-                    _postRepository.EditPost(post);
+                    post.CreatedAt = DateTime.UtcNow;
+                    await _postRepository.UpdateAsync(post);
                 }
             }
         }
 
-        await _postRepository.SaveChangesAsync();
-        TempData["success"] = "Seçili yazılar başarıyla yayınlandı.";
-        return RedirectToAction(nameof(List));
+        return Json(new { success = true });
     }
 
     [Authorize]
+    [HttpPost]
     public async Task<IActionResult> BulkArchive(int[] ids)
     {
-        foreach (var id in ids)
+        if (ids == null || ids.Length == 0)
         {
-            var post = _postRepository.GetById(id);
+            return BadRequest("No posts selected.");
+        }
+
+        foreach (var postId in ids)
+        {
+            var post = await _postRepository.GetByIdAsync(postId);
             if (post != null)
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 if (post.UserId == userId || User.IsInRole("Admin"))
                 {
-                    post.Status = PostStatus.Archived;
-                    _postRepository.EditPost(post);
+                    await _postRepository.UpdateAsync(post);
                 }
             }
         }
 
-        await _postRepository.SaveChangesAsync();
-        TempData["success"] = "Seçili yazılar başarıyla arşivlendi.";
-        return RedirectToAction(nameof(List));
+        return Json(new { success = true });
     }
 
+    [Authorize]
     [HttpPost]
-    public async Task<IActionResult> AddComment(int postId, string content)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddComment([FromBody] CommentViewModel model)
     {
-        if (string.IsNullOrEmpty(content))
+        if (string.IsNullOrWhiteSpace(model.Content))
         {
-            return BadRequest("Yorum boş olamaz.");
-        }
-
-        var post = _postRepository.GetById(postId);
-        if (post == null)
-        {
-            return NotFound();
+            return Json(new { success = false, message = "Yorum içeriği boş olamaz." });
         }
 
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var user = _userRepository.GetById(userId);
-        if (user == null)
+        var post = await _postRepository.GetByIdAsync(model.PostId);
+
+        if (post == null)
         {
-            return NotFound();
+            return Json(new { success = false, message = "Yazı bulunamadı." });
         }
 
         var comment = new Comment
         {
-            Content = content,
+            Content = model.Content,
             CreatedAt = DateTime.UtcNow,
-            IsActive = true,
-            PostId = postId,
-            UserId = userId
+            PublishedOn = DateTime.UtcNow,
+            PostId = model.PostId,
+            UserId = userId,
+            IsActive = true
         };
 
-        _commentRepository.CreateComment(comment);
-        await _commentRepository.SaveChangesAsync();
-
-        TempData["success"] = "Yorumunuz başarıyla eklendi.";
-        return RedirectToAction(nameof(Details), new { url = post.Url });
+        await _commentRepository.AddAsync(comment);
+        return Json(new { success = true, message = "Yorum başarıyla eklendi." });
     }
 
-    public IActionResult Search(string query, int pageNumber = 1, int pageSize = 10)
+    public class CommentViewModel
     {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            return RedirectToAction(nameof(Index));
-        }
-
-        var posts = _postRepository.Posts
-            .Where(p => p.IsActive && (
-                p.Title.Contains(query) ||
-                p.Content.Contains(query) ||
-                p.Description.Contains(query)
-            ))
-            .OrderByDescending(p => p.PublishedOn)
-            .Include(p => p.User)
-            .Include(p => p.Tags)
-            .Include(p => p.Comments);
-
-        var totalPosts = posts.Count();
-        var paginatedPosts = posts
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        ViewBag.SearchQuery = query;
-        ViewBag.TotalPosts = totalPosts;
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
-
-        return View("Index", paginatedPosts);
-    }
-
-    [Authorize]
-    public IActionResult List(int pageNumber = 1, int pageSize = 10)
-    {
-        var posts = _postRepository.Posts
-            .Where(p => p.IsActive)
-            .OrderByDescending(p => p.PublishedOn)
-            .Include(p => p.User)
-            .Include(p => p.Tags)
-            .Include(p => p.Comments);
-
-        var totalPosts = posts.Count();
-        var paginatedPosts = posts
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        ViewBag.TotalPosts = totalPosts;
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
-
-        return View("Index", paginatedPosts);
+        public int PostId { get; set; }
+        public string? Content { get; set; }
     }
 
     [Authorize]
     [HttpPost]
-    public async Task<IActionResult> React(int postId, bool isLike)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddReaction([FromBody] ReactionViewModel model)
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var existingReaction = await _postRepository.GetReaction(postId, userId);
+        var post = await _postRepository.GetByIdAsync(model.PostId);
 
+        if (post == null)
+        {
+            return Json(new { success = false, message = "Yazı bulunamadı." });
+        }
+
+        var existingReaction = post.Reactions.FirstOrDefault(r => r.UserId == userId);
         if (existingReaction != null)
         {
-            if (existingReaction.IsLike == isLike)
+            if (existingReaction.IsLike == model.IsLike)
             {
-                // Remove reaction if clicking the same button
-                await _postRepository.RemoveReaction(existingReaction);
+                post.Reactions.Remove(existingReaction);
+                await _postRepository.UpdateAsync(post);
+                return Json(new { success = true, message = "Tepki kaldırıldı." });
             }
             else
             {
-                // Change reaction type
-                existingReaction.IsLike = isLike;
-                _postRepository.EditPost(existingReaction.Post);
+                existingReaction.IsLike = model.IsLike;
             }
         }
         else
         {
-            // Add new reaction
-            var reaction = new PostReaction
+            post.Reactions.Add(new PostReaction
             {
-                PostId = postId,
+                PostId = model.PostId,
                 UserId = userId,
-                IsLike = isLike,
+                IsLike = model.IsLike,
                 CreatedAt = DateTime.UtcNow
-            };
-            await _postRepository.AddReaction(reaction);
+            });
         }
 
-        await _postRepository.SaveChangesAsync();
+        await _postRepository.UpdateAsync(post);
+        return Json(new { success = true, message = model.IsLike ? "Yazı beğenildi." : "Yazı beğenilmedi." });
+    }
 
-        var post = _postRepository.GetById(postId);
-        if (post == null)
+    public class ReactionViewModel
+    {
+        public int PostId { get; set; }
+        public bool IsLike { get; set; }
+    }
+
+    [HttpGet]
+    [Route("Posts/Search")]
+    public async Task<IActionResult> Search(string query, int pageNumber = 1, int pageSize = 10)
+    {
+        try
         {
-            return NotFound();
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                // Boş sorgu durumunda Index action'a yönlendirmek yerine tüm postları gösteriyoruz
+                var allPosts = await _postRepository.GetAllAsync();
+                var activePosts = allPosts
+                    .Where(p => p.IsActive && p.Status == PostStatus.Published)
+                    .OrderByDescending(p => p.PublishedOn)
+                    .ToList();
+                    
+                var totalAllPosts = activePosts.Count;
+                var paginatedAllPosts = activePosts
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+                    
+                ViewBag.SearchQuery = "";
+                ViewBag.TotalPosts = totalAllPosts;
+                ViewBag.CurrentPage = pageNumber;
+                ViewBag.TotalPages = (int)Math.Ceiling(totalAllPosts / (double)pageSize);
+                ViewBag.ShowAllPostsMessage = true;
+                
+                return View(paginatedAllPosts);
+            }
+
+            // Trim search query
+            query = query.Trim();
+            
+            // Türkçe karakterleri normalize et
+            var normalizedQuery = query
+                .Replace('ı', 'i')
+                .Replace('ğ', 'g')
+                .Replace('ü', 'u')
+                .Replace('ş', 's')
+                .Replace('ö', 'o')
+                .Replace('ç', 'c')
+                .Replace('İ', 'i');
+
+            var posts = await _postRepository.SearchAsync(query);
+            
+            // Normalize edilmiş sorgu ile de arama yap ve sonuçları birleştir
+            if (normalizedQuery != query)
+            {
+                var normalizedResults = await _postRepository.SearchAsync(normalizedQuery);
+                // Sonuçları birleştir ve tekrarları kaldır
+                posts = posts.Union(normalizedResults).ToList();
+            }
+            
+            var totalSearchPosts = posts.Count;
+            var paginatedSearchPosts = posts
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            ViewBag.SearchQuery = query;
+            ViewBag.TotalPosts = totalSearchPosts;
+            ViewBag.CurrentPage = pageNumber;
+            ViewBag.TotalPages = (int)Math.Ceiling(totalSearchPosts / (double)pageSize);
+            
+            // Suggest related searches if no results
+            if (totalSearchPosts == 0)
+            {
+                var allTags = await _tagRepository.GetAllAsync();
+                ViewBag.SuggestedTags = allTags
+                    .Where(t => t.Name.ToLower().Contains(query.ToLower()) || 
+                               t.Name.ToLower().Contains(normalizedQuery.ToLower()))
+                    .Take(5)
+                    .ToList();
+                    
+                // Burada boş da olsa bir liste döndürüyoruz ki view doğru çalışsın
+                return View(new List<Post>());
+            }
+
+            return View(paginatedSearchPosts);
         }
-
-        return Json(new
+        catch (Exception ex)
         {
-            likes = post.Reactions.Count(r => r.IsLike),
-            dislikes = post.Reactions.Count(r => !r.IsLike),
-            userReaction = (await _postRepository.GetReaction(postId, userId))?.IsLike
+            // Hata durumunda log tutabilir ve kullanıcıya hata sayfası gösterebiliriz
+            return View("Error", new ErrorViewModel 
+            { 
+                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
+                ErrorMessage = "Arama sırasında bir hata oluştu: " + ex.Message 
+            });
+        }
+    }
+
+    [Authorize]
+    public async Task<IActionResult> List(int pageNumber = 1, int pageSize = 10)
+    {
+        var allPosts = await _postRepository.GetAllAsync();
+        var posts = allPosts
+            .Where(p => p.IsActive)
+            .OrderByDescending(p => p.PublishedOn)
+            .ToList();
+
+        var totalPosts = posts.Count();
+        var paginatedPosts = posts
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        ViewBag.TotalPosts = totalPosts;
+        ViewBag.CurrentPage = pageNumber;
+        ViewBag.TotalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
+
+        return View(paginatedPosts);
+    }
+
+    [Authorize]
+    public async Task<IActionResult> GetPostsJson()
+    {
+        var posts = await _postRepository.GetAllAsync();
+        var postList = posts.Select(p => new
+        {
+            id = p.PostId,
+            title = p.Title,
+            url = p.Url,
+            date = p.CreatedAt.ToString("dd/MM/yyyy"),
+            author = p.User.UserName
         });
+        return Json(postList);
     }
 
     private string GenerateUrl(string title)
     {
         if (string.IsNullOrEmpty(title))
+            return "";
+
+        // Remove diacritics (accents)
+        var normalizedString = title.Normalize(System.Text.NormalizationForm.FormD);
+        var stringBuilder = new System.Text.StringBuilder();
+
+        foreach (var c in normalizedString)
         {
-            return Guid.NewGuid().ToString();
+            var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                stringBuilder.Append(c);
+            }
         }
 
-        var url = title.ToLower()
+        // Convert to lowercase and replace spaces with dashes
+        var result = stringBuilder.ToString().Normalize(System.Text.NormalizationForm.FormC)
+            .ToLowerInvariant()
+            .Replace(" ", "-")
             .Replace("ı", "i")
             .Replace("ğ", "g")
             .Replace("ü", "u")
             .Replace("ş", "s")
             .Replace("ö", "o")
             .Replace("ç", "c")
-            .Replace(" ", "-")
-            .Replace(".", "")
-            .Replace(",", "")
-            .Replace(":", "")
-            .Replace(";", "")
-            .Replace("!", "")
-            .Replace("?", "")
-            .Replace("'", "")
-            .Replace("\"", "")
-            .Replace("(", "")
-            .Replace(")", "")
-            .Replace("[", "")
-            .Replace("]", "")
-            .Replace("{", "")
-            .Replace("}", "")
-            .Replace("/", "")
-            .Replace("\\", "")
-            .Replace("|", "")
-            .Replace("+", "")
-            .Replace("=", "")
-            .Replace("*", "")
-            .Replace("&", "")
-            .Replace("%", "")
-            .Replace("#", "")
-            .Replace("@", "")
-            .Replace("$", "")
-            .Replace("^", "")
-            .Replace("~", "")
-            .Replace("`", "")
-            .Replace("<", "")
-            .Replace(">", "");
+            .Replace("İ", "i");
 
-        return url;
+        // Remove special characters
+        result = System.Text.RegularExpressions.Regex.Replace(result, @"[^a-z0-9\-]", "");
+
+        // Replace multiple dashes with a single dash
+        result = System.Text.RegularExpressions.Regex.Replace(result, @"-{2,}", "-");
+
+        // Trim dashes from the beginning and end
+        result = result.Trim('-');
+
+        return result;
     }
 } 

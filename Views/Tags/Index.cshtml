@@ -40,7 +40,25 @@
                     <td>@Html.DisplayFor(modelItem => item.Name)</td>
                     <td>@Html.DisplayFor(modelItem => item.Url)</td>
                     <td>
-                        <span class="badge bg-@item.Color?.ToString().ToLower()">@item.Name</span>
+                        @{
+                            string tagColor = item.Color?.ToString().ToLower() ?? "secondary";
+                            string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
+                            bool isSpecialTag = item.Name == "Entity Framework" || item.Name == "CSS" || item.Name == "React";
+                            string specialClass = "";
+                            
+                            if (item.Name == "Entity Framework") specialClass = "entity-framework-tag";
+                            else if (item.Name == "CSS") specialClass = "css-tag";
+                            else if (item.Name == "React") specialClass = "react-tag";
+                        }
+                        
+                        @if (tagColor == "info" || isSpecialTag)
+                        {
+                            <span class="badge text-dark p-2 @specialClass" style="background-color: #0dcaf0 !important;">@item.Name</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-@tagColor @textClass p-2">@item.Name</span>
+                        }
                     </td>
                     @if (User.IsInRole("Admin"))
                     {
@@ -53,4 +71,29 @@
             }
         </tbody>
     </table>
-</div> 
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Özel tagleri manuel olarak düzelt
+        document.querySelectorAll('span.badge').forEach(function(badge) {
+            if (badge.textContent.includes('Entity Framework') || 
+                badge.textContent.includes('CSS') || 
+                badge.textContent.includes('React')) {
+                
+                badge.style.backgroundColor = '#0dcaf0';
+                badge.style.color = '#000';
+                badge.classList.add('text-dark');
+                badge.classList.remove('bg-secondary', 'text-white');
+            }
+            
+            // Info renkli badgelar için ek güvence
+            if (badge.classList.contains('bg-info')) {
+                badge.style.backgroundColor = '#0dcaf0 !important';
+                badge.style.color = '#000 !important';
+            }
+        });
+    });
+</script>
+} 

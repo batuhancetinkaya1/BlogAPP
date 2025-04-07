@@ -1,4 +1,5 @@
 @model BlogApp.Entity.Tag
+@using BlogApp.Entity
 
 @{
     ViewData["Title"] = "Etiket Düzenle";
@@ -29,6 +30,22 @@
                         <option value="">-- Renk Seçin --</option>
                     </select>
                     <span asp-validation-for="Color" class="text-danger"></span>
+                    <div class="mt-2">
+                        <span class="badge bg-primary p-2 me-1">Primary</span>
+                        <span class="badge bg-secondary p-2 me-1">Secondary</span>
+                        <span class="badge bg-success p-2 me-1">Success</span>
+                        <span class="badge bg-danger p-2 me-1">Danger</span>
+                        <span class="badge bg-warning text-dark p-2 me-1">Warning</span>
+                        <span class="badge bg-info text-dark p-2 me-1">Info</span>
+                        <span class="badge bg-orange text-white p-2 me-1">Orange</span>
+                        <span class="badge bg-dark text-white p-2 me-1">Dark</span>
+                    </div>
+                </div>
+                <div id="tagPreview" class="form-group mb-3">
+                    <label class="control-label">Önizleme</label>
+                    <div>
+                        <span id="previewBadge" class="badge p-2">@Model.Name</span>
+                    </div>
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary">Kaydet</button>
@@ -41,4 +58,54 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const nameInput = document.getElementById('Name');
+            const colorSelect = document.getElementById('Color');
+            const previewBadge = document.getElementById('previewBadge');
+            
+            function updatePreview() {
+                const name = nameInput.value || 'Etiket Önizleme';
+                const colorValue = colorSelect.value;
+                let colorClass = 'secondary';
+                let textClass = 'text-white';
+                
+                if (colorValue) {
+                    const colorText = colorSelect.options[colorSelect.selectedIndex].text.toLowerCase();
+                    colorClass = colorText;
+                    
+                    // Açık renkli etiketler için metin rengini ayarla
+                    if (colorClass === 'warning' || colorClass === 'info' || colorClass === 'light') {
+                        textClass = 'text-dark';
+                    }
+                }
+                
+                // Info renk kontrolü için özel koşul
+                const isInfo = (colorClass === 'info');
+                
+                // Önizleme badge sınıfını ve içeriğini güncelle
+                previewBadge.className = '';
+                
+                if (isInfo) {
+                    // Info için özel stil
+                    previewBadge.classList.add('badge', textClass);
+                    previewBadge.style.backgroundColor = '#0dcaf0';
+                    previewBadge.style.color = '#000';
+                } else {
+                    previewBadge.classList.add('badge', `bg-${colorClass}`, textClass);
+                    previewBadge.style.backgroundColor = '';
+                    previewBadge.style.color = '';
+                }
+                
+                previewBadge.classList.add('p-2');
+                previewBadge.textContent = name;
+            }
+            
+            nameInput.addEventListener('input', updatePreview);
+            colorSelect.addEventListener('change', updatePreview);
+            
+            // İlk yükleme
+            updatePreview();
+        });
+    </script>
 } 

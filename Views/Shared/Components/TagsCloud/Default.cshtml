@@ -1,0 +1,46 @@
+@model List<BlogApp.Entity.Tag>
+
+@foreach (var tag in Model)
+{
+    string tagColor = tag.Color?.ToString().ToLower() ?? "secondary";
+    // Açık renkli etiketler için metin rengini ayarlama
+    string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
+    bool isSpecialTag = tag.Name == "Entity Framework" || tag.Name == "CSS" || tag.Name == "React";
+    string specialClass = "";
+    
+    if (tag.Name == "Entity Framework") specialClass = "entity-framework-tag";
+    else if (tag.Name == "CSS") specialClass = "css-tag";
+    else if (tag.Name == "React") specialClass = "react-tag";
+    
+    // Etiketin içerdiği yazı sayısına göre boyut ayarlama
+    string sizeClass = "";
+    if (tag.Posts.Count > 10)
+    {
+        sizeClass = "fs-5";
+    }
+    else if (tag.Posts.Count > 5)
+    {
+        sizeClass = "fs-6";
+    }
+    else if (tag.Posts.Count > 2)
+    {
+        sizeClass = "fs-7";
+    }
+    else
+    {
+        sizeClass = "fs-8";
+    }
+    
+    @if (tagColor == "info" || isSpecialTag)
+    {
+        <a href="/tags/@tag.Url" class="badge text-dark @sizeClass text-decoration-none me-2 mb-2 @specialClass" style="background-color: #0dcaf0 !important;">
+            @tag.Name <span class="badge bg-white text-info">@tag.Posts.Count</span>
+        </a>
+    }
+    else
+    {
+        <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass @sizeClass text-decoration-none me-2 mb-2">
+            @tag.Name <span class="badge bg-white text-@tagColor">@tag.Posts.Count</span>
+        </a>
+    }
+} 
