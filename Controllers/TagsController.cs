@@ -18,6 +18,7 @@ namespace BlogApp.Controllers
             _postRepository = postRepository;
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Index()
         {
             var tags = await _tagRepository.GetAllAsync();
@@ -48,14 +49,15 @@ namespace BlogApp.Controllers
             return View(viewModel);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         public IActionResult Create()
         {
             return View();
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Tag tag)
         {
             if (!tag.Color.HasValue)
@@ -93,6 +95,7 @@ namespace BlogApp.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Tag tag)
         {
             if (id != tag.TagId)
@@ -150,6 +153,7 @@ namespace BlogApp.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var tag = await _tagRepository.GetByIdAsync(id);

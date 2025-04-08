@@ -4,7 +4,7 @@ namespace BlogApp.Data.Abstract;
 
 public interface IPostRepository
 {
-    Task<Post> GetByIdAsync(int id);
+    Task<Post?> GetByIdAsync(int id);
     Task<List<Post>> GetAllAsync();
     Task<List<Post>> GetAllWithDetailsAsync();
     Task<List<Post>> GetByUserIdAsync(int userId);

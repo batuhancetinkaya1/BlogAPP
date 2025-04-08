@@ -4,8 +4,8 @@ namespace BlogApp.Data.Abstract;
 
 public interface ITagRepository
 {
-    Task<Tag> GetByIdAsync(int id);
-    Task<Tag> GetByUrlAsync(string url);
+    Task<Tag?> GetByIdAsync(int id);
+    Task<Tag?> GetByUrlAsync(string url);
     Task<List<Tag>> GetAllAsync();
     Task AddAsync(Tag tag);
     Task UpdateAsync(Tag tag);

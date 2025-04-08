@@ -8,12 +8,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BlogApp.Entity;
 using BlogApp.Models.ViewModels;
+using BlogApp.Models;
 using BlogApp.Data.Abstract;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
+using BlogApp.Helpers;
+using BlogApp.Services;
 
 namespace BlogApp.Controllers;
 
@@ -21,11 +24,15 @@ public class UsersController : Controller
 {
     private readonly IUserRepository _userRepository;
     private readonly IPostRepository _postRepository;
+    private readonly ITagRepository _tagRepository;
+    private readonly INotificationService _notificationService;
 
-    public UsersController(IUserRepository userRepository, IPostRepository postRepository)
+    public UsersController(IUserRepository userRepository, IPostRepository postRepository, ITagRepository tagRepository, INotificationService notificationService)
     {
         _userRepository = userRepository;
         _postRepository = postRepository;
+        _tagRepository = tagRepository;
+        _notificationService = notificationService;
     }
 
     [HttpGet]
@@ -119,7 +126,8 @@ public class UsersController : Controller
             Email = model.Email,
             Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
             CreatedAt = DateTime.UtcNow,
-            IsAdmin = false
+            IsAdmin = false,
+            Image = "/img/profiles/default.jpg"
         };
 
         await _userRepository.AddAsync(user);
@@ -157,12 +165,6 @@ public class UsersController : Controller
             return NotFound();
         }
 
-        // Kullanıcı resmi yoksa varsayılan resmi kullan
-        if (string.IsNullOrEmpty(user.Image))
-        {
-            user.Image = "/img/profiles/default.jpg";
-        }
-
         var viewModel = new UserProfileViewModel
         {
             User = user,
@@ -191,17 +193,6 @@ public class UsersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateProfile(ProfileUpdateModel model)
     {
-        if (!ModelState.IsValid)
-        {
-            foreach (var error in ModelState.Values.SelectMany(v => v.Errors))
-            {
-                TempData["error"] = error.ErrorMessage;
-            }
-            
-            var username = User.Identity?.Name;
-            return RedirectToAction("Profile", new { username });
-        }
-
         try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
@@ -209,43 +200,43 @@ public class UsersController : Controller
             
             if (user == null)
             {
-                TempData["error"] = "Kullanıcı bulunamadı.";
-                return RedirectToAction("Index", "Home");
+                _notificationService.Error("Kullanıcı bulunamadı.");
+                return RedirectToAction("Profile", new { username = User.Identity?.Name });
             }
 
-            // Kullanıcı adı güncelleme
-            if (!string.IsNullOrEmpty(model.UserName) && model.UserName.Length >= 3 && model.UserName.Length <= 50)
+            // Kullanıcı adı güncellemesi
+            if (!string.IsNullOrEmpty(model.UserName) && model.UserName != user.UserName)
             {
-                // Kullanıcı adı başka bir kullanıcı tarafından kullanılıyor mu kontrol et
+                // Kullanıcı adı özel karakterler ve boşluk içermemeli
+                if (!System.Text.RegularExpressions.Regex.IsMatch(model.UserName, "^[a-zA-Z0-9_-]+$"))
+                {
+                    _notificationService.Error("Kullanıcı adı sadece harf, rakam, tire ve alt çizgi içerebilir.");
+                    return RedirectToAction("Profile", new { username = user.UserName });
+                }
+
                 var existingUser = await _userRepository.GetByUsernameAsync(model.UserName);
                 if (existingUser != null && existingUser.UserId != userId)
                 {
-                    TempData["error"] = "Bu kullanıcı adı başka bir kullanıcı tarafından kullanılıyor.";
+                    _notificationService.Error("Bu kullanıcı adı başka bir kullanıcı tarafından kullanılıyor.");
                     return RedirectToAction("Profile", new { username = user.UserName });
                 }
                 user.UserName = model.UserName;
             }
-            else
-            {
-                TempData["error"] = "Kullanıcı adı 3-50 karakter arasında olmalıdır.";
-                return RedirectToAction("Profile", new { username = user.UserName });
-            }
 
-            // Email güncelleme
+            // Email güncellemesi
             if (!string.IsNullOrEmpty(model.Email) && model.Email.Contains("@"))
             {
-                // Email başka bir kullanıcı tarafından kullanılıyor mu kontrol et
                 var existingUserByEmail = await _userRepository.GetByEmailAsync(model.Email);
                 if (existingUserByEmail != null && existingUserByEmail.UserId != userId)
                 {
-                    TempData["error"] = "Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor.";
+                    _notificationService.Error("Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor.");
                     return RedirectToAction("Profile", new { username = user.UserName });
                 }
                 user.Email = model.Email;
             }
             else
             {
-                TempData["error"] = "Geçerli bir e-posta adresi giriniz.";
+                _notificationService.Error("Geçerli bir e-posta adresi giriniz.");
                 return RedirectToAction("Profile", new { username = user.UserName });
             }
 
@@ -254,67 +245,23 @@ public class UsersController : Controller
             {
                 try
                 {
-                    // Görüntü dosyasının uzantısını kontrol et
-                    var extension = Path.GetExtension(model.Image.FileName).ToLowerInvariant();
-                    if (extension != ".jpg" && extension != ".jpeg" && extension != ".png")
-                    {
-                        TempData["error"] = "Sadece JPG ve PNG dosyalarına izin verilmektedir.";
-                        return RedirectToAction("Profile", new { username = user.UserName });
-                    }
-
-                    // Dosya boyutu kontrolü
-                    if (model.Image.Length > 2 * 1024 * 1024) // 2MB
-                    {
-                        TempData["error"] = "Dosya boyutu 2MB'ı geçemez.";
-                        return RedirectToAction("Profile", new { username = user.UserName });
-                    }
-
-                    // Dosya adı oluştur
-                    var fileName = $"{Guid.NewGuid()}{extension}";
-                    var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "profiles");
-                    if (!Directory.Exists(uploadsDirectory))
-                    {
-                        Directory.CreateDirectory(uploadsDirectory);
-                    }
-
-                    var filePath = Path.Combine(uploadsDirectory, fileName);
-
                     // Eğer kullanıcının mevcut bir resmi varsa onu sil
                     if (!string.IsNullOrEmpty(user.Image) && !user.Image.Contains("default.jpg"))
                     {
-                        try 
-                        {
-                            var oldImagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", user.Image.TrimStart('/'));
-                            Console.WriteLine($"Silinecek eski dosya yolu: {oldImagePath}");
-                            
-                            if (System.IO.File.Exists(oldImagePath))
-                            {
-                                System.IO.File.Delete(oldImagePath);
-                                Console.WriteLine("Eski dosya silindi");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Eski dosya silinirken hata: {ex.Message} - devam edilecek");
-                        }
+                        await ImageHelper.DeleteImageFileAsync(user.Image);
                     }
 
-                    // Yeni dosyayı kaydet
-                    using (var fileStream = new FileStream(filePath, FileMode.Create))
-                    {
-                        model.Image.CopyTo(fileStream);
-                        Console.WriteLine("Yeni resim dosyaya kopyalandı");
-                    }
-
-                    // Veritabanında kullanıcı nesnesini güncelle
-                    var newImagePath = $"/img/profiles/{fileName}";
-                    Console.WriteLine($"Yeni resim yolu: {newImagePath}");
-                    user.Image = newImagePath;
+                    // Yeni profil resmini doğrula ve kaydet
+                    user.Image = await ImageHelper.ValidateAndSaveProfileImageAsync(model.Image);
                 }
-                catch (Exception ex) 
+                catch (ImageValidationException ex)
                 {
-                    Console.WriteLine($"Resim işleme hatası: {ex.Message}");
-                    TempData["error"] = $"Resim yükleme hatası: {ex.Message}";
+                    _notificationService.Error(ex.Message);
+                    return RedirectToAction("Profile", new { username = user.UserName });
+                }
+                catch (Exception ex)
+                {
+                    _notificationService.Error($"Resim yükleme hatası: {ex.Message}");
                     return RedirectToAction("Profile", new { username = user.UserName });
                 }
             }
@@ -324,7 +271,7 @@ public class UsersController : Controller
             {
                 if (model.Password.Length < 6)
                 {
-                    TempData["error"] = "Şifre en az 6 karakter olmalıdır.";
+                    _notificationService.Error("Şifre en az 6 karakter olmalıdır.");
                     return RedirectToAction("Profile", new { username = user.UserName });
                 }
                 user.Password = BCrypt.Net.BCrypt.HashPassword(model.Password);
@@ -333,12 +280,12 @@ public class UsersController : Controller
             await _userRepository.UpdateAsync(user);
             await UpdateAuthenticationCookie(user);
 
-            TempData["success"] = "Profil başarıyla güncellendi.";
+            _notificationService.Success("Profil başarıyla güncellendi.");
             return RedirectToAction("Profile", new { username = user.UserName });
         }
         catch (Exception ex)
         {
-            TempData["error"] = $"Bir hata oluştu: {ex.Message}";
+            _notificationService.Error($"Bir hata oluştu: {ex.Message}");
             return RedirectToAction("Profile", new { username = User.Identity?.Name });
         }
     }
@@ -419,6 +366,7 @@ public class UsersController : Controller
 
     [Authorize]
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
     {
         if (!ModelState.IsValid)
@@ -455,16 +403,9 @@ public class UsersController : Controller
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         var posts = await _postRepository.GetByUserIdAsync(userId);
         
-        var totalPosts = posts.Count;
-        var paginatedPosts = posts
-            .OrderByDescending(p => p.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        ViewBag.TotalPosts = totalPosts;
-        ViewBag.CurrentPage = pageNumber;
-        ViewBag.TotalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
+        // Order posts by CreatedAt and apply pagination
+        var orderedPosts = posts.OrderByDescending(p => p.CreatedAt).ToList();
+        var paginatedPosts = BlogApp.Helpers.PaginatedList<Post>.Create(orderedPosts, pageNumber, pageSize);
 
         return View(paginatedPosts);
     }
@@ -472,5 +413,25 @@ public class UsersController : Controller
     public IActionResult AccessDenied()
     {
         return View();
+    }
+
+    // Profil resmi güncelleme için gelişmiş dosya kontrolü
+    private (bool isValid, string? errorMessage) ValidateImage(IFormFile imageFile)
+    {
+        if (imageFile == null || imageFile.Length == 0)
+            return (false, "Geçersiz dosya.");
+
+        // Dosya uzantısı kontrolü
+        var extension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+        
+        if (!allowedExtensions.Contains(extension))
+            return (false, "Sadece JPG ve PNG dosyalarına izin verilmektedir.");
+
+        // Dosya boyutu kontrolü (2MB)
+        if (imageFile.Length > 2 * 1024 * 1024)
+            return (false, "Dosya boyutu 2MB'ı geçemez.");
+
+        return (true, null);
     }
 } 

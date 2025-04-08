@@ -90,6 +90,7 @@ namespace BlogApp.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditUser(int id, UserEditViewModel model)
         {
             if (!ModelState.IsValid)
@@ -114,6 +115,8 @@ namespace BlogApp.Controllers
             return RedirectToAction(nameof(Users));
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteUser(int id)
         {
             var user = await _userRepository.GetByIdAsync(id);

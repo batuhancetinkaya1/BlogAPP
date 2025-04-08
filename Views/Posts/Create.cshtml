@@ -327,11 +327,74 @@
         document.addEventListener('DOMContentLoaded', function () {
             console.log("Blog yazısı oluşturma sayfası yüklendi");
             
-            // CKEditor Başlatma - Hata veren araç çubuğu yapılandırması düzeltildi
+            // Simple upload adapter plugin
+            class MyUploadAdapter {
+                constructor(loader) {
+                    this.loader = loader;
+                }
+
+                upload() {
+                    return this.loader.file
+                        .then(file => new Promise((resolve, reject) => {
+                            const data = new FormData();
+                            data.append('upload', file);
+                            
+                            // Add CSRF token
+                            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                            
+                            fetch('/Posts/UploadImage', {
+                                method: 'POST',
+                                body: data,
+                                headers: {
+                                    'X-CSRF-TOKEN': token
+                                }
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data && data.url) {
+                                    resolve({
+                                        default: data.url
+                                    });
+                                } else {
+                                    reject('Upload failed');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Upload error:', error);
+                                reject(error);
+                            });
+                        }));
+                }
+
+                abort() {
+                    console.log('Upload aborted');
+                }
+            }
+
+            function MyUploadAdapterPlugin(editor) {
+                editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+                    return new MyUploadAdapter(loader);
+                };
+            }
+            
+            // CKEditor Başlatma - Geliştirilmiş araç çubuğu yapılandırması
             ClassicEditor
                 .create(document.querySelector('#Content'), {
-                    toolbar: ['undo', 'redo', 'heading', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
-                    language: 'tr'
+                    toolbar: ['undo', 'redo', 'heading', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', 'insertImage', 'mediaEmbed'],
+                    language: 'tr',
+                    image: {
+                        toolbar: [
+                            'imageStyle:full',
+                            'imageStyle:side',
+                            'imageTextAlternative'
+                        ]
+                    },
+                    extraPlugins: [MyUploadAdapterPlugin]
                 })
                 .then(editor => {
                     console.log('CKEditor başarıyla yüklendi:', editor);

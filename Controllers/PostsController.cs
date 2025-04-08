@@ -10,6 +10,8 @@ using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Diagnostics;
 using System.Diagnostics;
+using BlogApp.Helpers;
+using BlogApp.Services;
 
 namespace BlogApp.Controllers;
 
@@ -19,20 +21,23 @@ public class PostsController : Controller
     private readonly ITagRepository _tagRepository;
     private readonly ICommentRepository _commentRepository;
     private readonly IUserRepository _userRepository;
+    private readonly INotificationService _notificationService;
 
     public PostsController(
         IPostRepository postRepository,
         ITagRepository tagRepository,
         ICommentRepository commentRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        INotificationService notificationService)
     {
         _postRepository = postRepository;
         _tagRepository = tagRepository;
         _commentRepository = commentRepository;
         _userRepository = userRepository;
+        _notificationService = notificationService;
     }
 
-    public async Task<IActionResult> Index(string tag = null, string sort = "date", int page = 1)
+    public async Task<IActionResult> Index(string? tag = null, string sort = "date", int page = 1)
     {
         var posts = await _postRepository.GetAllWithDetailsAsync();
         // Sadece yayında olan yazıları göster
@@ -83,54 +88,33 @@ public class PostsController : Controller
         {
             Console.WriteLine($"Details: Post çağrılıyor URL: {url}");
             var post = await _postRepository.GetByUrlWithCommentsAndReactions(url);
-        if (post == null)
-        {
-                Console.WriteLine("Details: Post bulunamadı!");
-            return NotFound();
-        }
-
-            Console.WriteLine($"Details: Post bulundu ID: {post.PostId}, Yorumlar: {post.Comments?.Count ?? 0}, Beğeniler: {post.Reactions?.Count ?? 0}");
             
-            // Kullanıcı giriş yapmışsa beğenileri kontrol et
-            int? userId = null;
-            if (User.Identity.IsAuthenticated)
+            if (post == null)
             {
-                string userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedUserId))
+                return NotFound();
+            }
+
+            // Ensure User information is loaded
+            if (post.User == null)
+            {
+                post.User = await _userRepository.GetByIdAsync(post.UserId);
+            }
+
+            // Ensure User information is loaded for comments
+            foreach (var comment in post.Comments)
+            {
+                if (comment.User == null)
                 {
-                    userId = parsedUserId;
-                    Console.WriteLine($"Details: Giriş yapan kullanıcı ID: {userId}");
+                    comment.User = await _userRepository.GetByIdAsync(comment.UserId);
                 }
             }
-            
-            ViewBag.UserReaction = userId.HasValue 
-                ? post.Reactions?.FirstOrDefault(r => r.UserId == userId)?.IsLike 
-                : null;
-                
-            Console.WriteLine($"Details: Kullanıcının yazıya tepkisi: {ViewBag.UserReaction}");
 
-            var commentViewModel = new Dictionary<int, List<object>>();
-            if (post.Comments != null)
-            {
-                foreach (var comment in post.Comments)
-                {
-                    Console.WriteLine($"Details: Yorum ID: {comment.CommentId}, Tepkiler: {comment.Reactions?.Count ?? 0}, ParentId: {comment.ParentCommentId}");
-                    
-                    // Yoruma kullanıcı tepkisi
-                    var userCommentReaction = userId.HasValue 
-                        ? comment.Reactions?.FirstOrDefault(r => r.UserId == userId)?.IsLike 
-                        : null;
-                        
-                    Console.WriteLine($"Details: Kullanıcının yoruma tepkisi (ID: {comment.CommentId}): {userCommentReaction}");
-                }
+            return View(post);
         }
-
-        return View(post);
-        }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"Details: Hata oluştu: {ex.Message}");
-            return StatusCode(500, "Bir hata oluştu: " + ex.Message);
+            // Log the error
+            return StatusCode(500, "Bir hata oluştu.");
         }
     }
 
@@ -206,14 +190,23 @@ public class PostsController : Controller
                 return View(model);
             }
 
+            // Sanitize HTML content to prevent XSS
+            model.Content = Helpers.HtmlSanitizerHelper.Sanitize(model.Content);
+            
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim?.Value == null)
+            {
+                return Unauthorized();
+            }
+            
             var post = new Post
             {
-                Title = model.Title,
-                Content = model.Content,
-                Description = model.Description,
-                Url = !string.IsNullOrEmpty(model.Url) ? model.Url : GenerateUrl(model.Title),
+                Title = model.Title ?? string.Empty,
+                Content = model.Content ?? string.Empty,
+                Description = model.Description ?? string.Empty,
+                Url = !string.IsNullOrEmpty(model.Url) ? model.Url : GenerateUrl(model.Title ?? string.Empty),
                 CreatedAt = DateTime.UtcNow,
-                UserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"),
+                UserId = int.Parse(userIdClaim.Value),
                 IsActive = model.IsActive,
                 VideoUrl = model.VideoUrl,
                 Keywords = model.Keywords,
@@ -268,7 +261,7 @@ public class PostsController : Controller
                 // Varsayılan bir resim ata
                 post.Image = "/img/posts/default.jpg";
             }
-            
+
             // Post'u kaydet
             await _postRepository.AddAsync(post);
             
@@ -337,6 +330,7 @@ public class PostsController : Controller
 
     [Authorize]
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, Models.PostEditViewModel model)
     {
         if (id != model.PostId)
@@ -357,6 +351,9 @@ public class PostsController : Controller
             ViewBag.Tags = await _tagRepository.GetAllAsync();
             return View(model);
         }
+
+        // Sanitize HTML content to prevent XSS
+        model.Content = Helpers.HtmlSanitizerHelper.Sanitize(model.Content);
 
         existingPost.Title = model.Title;
         existingPost.Content = model.Content;
@@ -443,19 +440,60 @@ public class PostsController : Controller
     }
 
     [Authorize]
-    [HttpPost]
+    [HttpGet]
+    [Route("Posts/Delete/{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         var post = await _postRepository.GetByIdAsync(id);
 
-        if (post == null || post.UserId != userId)
+        if (post == null)
         {
-            return Json(new { success = false, message = "Yazı bulunamadı veya silme yetkiniz yok." });
+            return NotFound();
+        }
+
+        if (post.UserId != userId && !User.IsInRole("Admin"))
+        {
+            return Forbid();
+        }
+
+        return View(post);
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Route("Posts/Delete/{id:int}")]
+    public async Task<IActionResult> DeleteConfirmed(int id)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var post = await _postRepository.GetByIdAsync(id);
+
+        if (post == null)
+        {
+            return Request.Headers["X-Requested-With"] == "XMLHttpRequest" 
+                ? Json(new { success = false, message = "Yazı bulunamadı." }) 
+                : NotFound();
+        }
+
+        if (post.UserId != userId && !User.IsInRole("Admin"))
+        {
+            return Request.Headers["X-Requested-With"] == "XMLHttpRequest" 
+                ? Json(new { success = false, message = "Bu yazıyı silme yetkiniz yok." }) 
+                : Forbid();
         }
 
         await _postRepository.DeleteAsync(post);
-        return Json(new { success = true });
+        
+        // Check if request is AJAX
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            return Json(new { success = true, message = "Yazı başarıyla silindi." });
+        }
+        
+        // For direct form submissions, redirect to user's posts page
+        _notificationService.Success("Yazı başarıyla silindi.");
+        return RedirectToAction("MyPosts", "Users");
     }
 
     [Authorize]
@@ -470,7 +508,8 @@ public class PostsController : Controller
         }
 
         // Kullanıcının yetkili olup olmadığını kontrol et
-        if (!User.IsInRole("Admin") && post.UserId != int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value))
+        string? userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!User.IsInRole("Admin") && userIdStr != null && post.UserId != int.Parse(userIdStr))
         {
             return Forbid();
         }
@@ -484,6 +523,8 @@ public class PostsController : Controller
     }
 
     [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Archive(int id)
     {
         var post = await _postRepository.GetByIdAsync(id);
@@ -499,13 +540,16 @@ public class PostsController : Controller
             return Forbid();
         }
 
+        post.Status = PostStatus.Archived;
         await _postRepository.UpdateAsync(post);
 
+        TempData["success"] = "Yazı başarıyla arşivlendi.";
         return RedirectToAction(nameof(Details), new { url = post.Url });
     }
 
     [Authorize]
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> BulkDelete(int[] ids)
     {
         if (ids == null || ids.Length == 0)
@@ -531,6 +575,7 @@ public class PostsController : Controller
 
     [Authorize]
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> BulkPublish(int[] ids)
     {
         if (ids == null || ids.Length == 0)
@@ -557,6 +602,7 @@ public class PostsController : Controller
 
     [Authorize]
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> BulkArchive(int[] ids)
     {
         if (ids == null || ids.Length == 0)
@@ -622,7 +668,7 @@ public class PostsController : Controller
                 }
                 
                 Console.WriteLine($"AddComment: Ebeveyn yorum bulundu - ID: {parentComment.CommentId}");
-            }
+        }
 
         var comment = new Comment
         {
@@ -720,26 +766,65 @@ public class PostsController : Controller
                 action = "added";
             }
 
-            // Değişiklikleri kaydet
-            Console.WriteLine("AddCommentReaction: Değişiklikler kaydediliyor");
-            await _commentRepository.UpdateAsync(comment);
-            
-            // Değişikliklerden sonra yorumu tekrar çek ve sayıları güncelle
-            comment = await _commentRepository.GetByIdAsync(model.CommentId);
-            
-            // Gerçek sayıları hesapla
-            int likesCount = comment.Reactions.Count(r => r.IsLike);
-            int dislikesCount = comment.Reactions.Count(r => !r.IsLike);
-            
-            Console.WriteLine($"AddCommentReaction: İşlem tamamlandı - Beğeni: {likesCount}, Beğenmeme: {dislikesCount}");
+            try
+            {
+                // Değişiklikleri kaydet
+                Console.WriteLine("AddCommentReaction: Değişiklikler kaydediliyor");
+                await _commentRepository.UpdateAsync(comment);
+                
+                // Değişikliklerden sonra yorumu tekrar çek ve sayıları güncelle
+                comment = await _commentRepository.GetByIdAsync(model.CommentId);
+                
+                // Gerçek sayıları hesapla
+                int likesCount = comment.Reactions.Count(r => r.IsLike);
+                int dislikesCount = comment.Reactions.Count(r => !r.IsLike);
+                
+                Console.WriteLine($"AddCommentReaction: İşlem tamamlandı - Beğeni: {likesCount}, Beğenmeme: {dislikesCount}");
 
-            return Json(new { 
-                success = true, 
-                message = model.IsLike ? "Yorum beğenildi." : "Yorum beğenilmedi.", 
-                action,
-                likesCount,
-                dislikesCount
-            });
+                return Json(new { 
+                    success = true, 
+                    message = model.IsLike ? "Yorum beğenildi." : "Yorum beğenilmedi.", 
+                    action,
+                    likesCount,
+                    dislikesCount
+                });
+            }
+            catch (DbUpdateException ex)
+            {
+                // Unique constraint hatası
+                if (ex.InnerException?.Message.Contains("UNIQUE constraint failed") == true)
+                {
+                    Console.WriteLine("AddCommentReaction: Unique constraint hatası - reaksiyon zaten var");
+                    
+                    // Veritabanından güncel veriyi al
+                    comment = await _commentRepository.GetByIdAsync(model.CommentId);
+                    
+                    // Mevcut reaksiyonu bul
+                    existingReaction = comment.Reactions.FirstOrDefault(r => r.UserId == userId);
+                    
+                    if (existingReaction != null)
+                    {
+                        // Reaksiyonu güncelle
+                        existingReaction.IsLike = model.IsLike;
+                        await _commentRepository.UpdateAsync(comment);
+                        
+                        // Sayıları güncelle
+                        int likesCount = comment.Reactions.Count(r => r.IsLike);
+                        int dislikesCount = comment.Reactions.Count(r => !r.IsLike);
+                        
+                        return Json(new { 
+                            success = true, 
+                            message = model.IsLike ? "Yorum beğenildi." : "Yorum beğenilmedi.", 
+                            action = "updated",
+                            likesCount,
+                            dislikesCount
+                        });
+                    }
+                }
+                
+                Console.WriteLine($"AddCommentReaction: Değişiklikler kaydedilirken hata oluştu: {ex.Message}");
+                return Json(new { success = false, message = "Reaksiyon eklenirken bir hata oluştu." });
+            }
         }
         catch (Exception ex)
         {
@@ -755,50 +840,49 @@ public class PostsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddReaction([FromBody] ReactionViewModel model)
     {
-        try
+        if (!ModelState.IsValid)
         {
-            if (model == null || model.PostId <= 0)
-            {
-                return Json(new { success = false, message = "Geçersiz istek." });
-            }
-
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            Console.WriteLine($"AddReaction: Kullanıcı ID: {userId}, Post ID: {model.PostId}, IsLike: {model.IsLike}");
-            
-        var post = await _postRepository.GetByIdAsync(model.PostId);
-
-        if (post == null)
-        {
-                Console.WriteLine("AddReaction: Post bulunamadı");
-            return Json(new { success = false, message = "Yazı bulunamadı." });
+            return BadRequest(ModelState);
         }
 
-            string action = "";
+        var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (userId == 0)
+        {
+            return Unauthorized();
+        }
+
+        var post = await _postRepository.GetByIdAsync(model.PostId);
+        if (post == null)
+        {
+            return NotFound("Post bulunamadı.");
+        }
+
+        string action = "";
         var existingReaction = post.Reactions.FirstOrDefault(r => r.UserId == userId);
-            Console.WriteLine($"AddReaction: Mevcut reaksiyon: {(existingReaction != null ? $"ID: {existingReaction.PostReactionId}, IsLike: {existingReaction.IsLike}" : "Yok")}");
-            
+        Console.WriteLine($"AddReaction: Mevcut reaksiyon: {(existingReaction != null ? $"ID: {existingReaction.PostReactionId}, IsLike: {existingReaction.IsLike}" : "Yok")}");
+        
         if (existingReaction != null)
         {
-                // Zaten bir reaksiyon var
+            // Zaten bir reaksiyon var
             if (existingReaction.IsLike == model.IsLike)
             {
-                    // Aynı tip reaksiyon - kaldır
-                    Console.WriteLine("AddReaction: Aynı tip reaksiyon - kaldırılıyor");
+                // Aynı tip reaksiyon - kaldır
+                Console.WriteLine("AddReaction: Aynı tip reaksiyon - kaldırılıyor");
                 post.Reactions.Remove(existingReaction);
-                    action = "removed";
+                action = "removed";
             }
             else
             {
-                    // Farklı tip reaksiyon - güncelle
-                    Console.WriteLine("AddReaction: Farklı tip reaksiyon - güncelleniyor");
+                // Farklı tip reaksiyon - güncelle
+                Console.WriteLine("AddReaction: Farklı tip reaksiyon - güncelleniyor");
                 existingReaction.IsLike = model.IsLike;
-                    action = "updated";
+                action = "updated";
             }
         }
         else
         {
-                // Yeni reaksiyon ekle
-                Console.WriteLine("AddReaction: Yeni reaksiyon ekleniyor");
+            // Yeni reaksiyon ekle
+            Console.WriteLine("AddReaction: Yeni reaksiyon ekleniyor");
             post.Reactions.Add(new PostReaction
             {
                 PostId = model.PostId,
@@ -806,36 +890,29 @@ public class PostsController : Controller
                 IsLike = model.IsLike,
                 CreatedAt = DateTime.UtcNow
             });
-                action = "added";
+            action = "added";
         }
 
-            // Değişiklikleri kaydet
-            Console.WriteLine("AddReaction: Değişiklikler kaydediliyor");
+        // Değişiklikleri kaydet
+        Console.WriteLine("AddReaction: Değişiklikler kaydediliyor");
         await _postRepository.UpdateAsync(post);
-            
-            // Değişikliklerden sonra postu tekrar çek ve sayıları güncelle
-            post = await _postRepository.GetByIdAsync(model.PostId);
-            
-            // Gerçek sayıları hesapla
-            int likesCount = post.Reactions.Count(r => r.IsLike);
-            int dislikesCount = post.Reactions.Count(r => !r.IsLike);
-            
-            Console.WriteLine($"AddReaction: İşlem tamamlandı - Beğeni: {likesCount}, Beğenmeme: {dislikesCount}");
+        
+        // Değişikliklerden sonra postu tekrar çek ve sayıları güncelle
+        post = await _postRepository.GetByIdAsync(model.PostId);
+        
+        // Gerçek sayıları hesapla
+        int likesCount = post.Reactions.Count(r => r.IsLike);
+        int dislikesCount = post.Reactions.Count(r => !r.IsLike);
+        
+        Console.WriteLine($"AddReaction: İşlem tamamlandı - Beğeni: {likesCount}, Beğenmeme: {dislikesCount}");
 
-            return Json(new { 
-                success = true, 
-                message = model.IsLike ? "Yazı beğenildi." : "Yazı beğenilmedi.", 
-                action,
-                likesCount,
-                dislikesCount
-            });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"AddReaction error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            return Json(new { success = false, message = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin." });
-        }
+        return Json(new { 
+            success = true, 
+            message = model.IsLike ? "Yazı beğenildi." : "Yazı beğenilmedi.", 
+            action,
+            likesCount,
+            dislikesCount
+        });
     }
 
     [Authorize]
@@ -874,10 +951,123 @@ public class PostsController : Controller
             
             Console.WriteLine($"DeleteComment: Yorum siliniyor, ParentID: {parentCommentId}");
             
-            // Yorumu sil
-            await _commentRepository.DeleteAsync(comment);
-            
-            Console.WriteLine("DeleteComment: Yorum başarıyla silindi");
+            try
+            {
+                // Önce yorumun tüm reaksiyonlarını sil
+                if (comment.Reactions != null && comment.Reactions.Any())
+                {
+                    Console.WriteLine($"DeleteComment: {comment.Reactions.Count} reaksiyon siliniyor");
+                    comment.Reactions.Clear();
+                    await _commentRepository.UpdateAsync(comment);
+                }
+                
+                // Eğer bu bir ana yorum ise, tüm yanıtları sil
+                if (!comment.ParentCommentId.HasValue)
+                {
+                    var replies = await _commentRepository.GetRepliesByParentIdAsync(comment.CommentId);
+                    if (replies != null && replies.Any())
+                    {
+                        Console.WriteLine($"DeleteComment: {replies.Count} yanıt siliniyor");
+                        foreach (var reply in replies)
+                        {
+                            // Her yanıtın reaksiyonlarını temizle
+                            if (reply.Reactions != null && reply.Reactions.Any())
+                            {
+                                reply.Reactions.Clear();
+                                await _commentRepository.UpdateAsync(reply);
+                            }
+                            
+                            // Yanıtı sil
+                            await _commentRepository.DeleteAsync(reply);
+                        }
+                    }
+                }
+                
+                // Yorumu sil
+                await _commentRepository.DeleteAsync(comment);
+                Console.WriteLine("DeleteComment: Yorum başarıyla silindi");
+            }
+            catch (DbUpdateException ex)
+            {
+                Console.WriteLine($"DeleteComment: Yorum silinirken hata oluştu: {ex.Message}");
+                Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
+                
+                // Foreign key hatası için özel işlem
+                if (ex.InnerException?.Message.Contains("FOREIGN KEY constraint failed") == true)
+                {
+                    // Tüm ilişkili kayıtları manuel olarak silmeyi dene
+                    try
+                    {
+                        // Veritabanı bağlantısını al
+                        var dbContext = _commentRepository.GetDbContext();
+                        
+                        // Reaksiyonları sil
+                        var reactions = dbContext.Set<CommentReaction>()
+                            .Where(r => r.CommentId == model.CommentId)
+                            .ToList();
+                        
+                        if (reactions.Any())
+                        {
+                            dbContext.Set<CommentReaction>().RemoveRange(reactions);
+                            await dbContext.SaveChangesAsync();
+                        }
+                        
+                        // Yanıtları sil
+                        var replies = dbContext.Set<Comment>()
+                            .Where(c => c.ParentCommentId == model.CommentId)
+                            .ToList();
+                        
+                        if (replies.Any())
+                        {
+                            foreach (var reply in replies)
+                            {
+                                // Yanıtların reaksiyonlarını sil
+                                var replyReactions = dbContext.Set<CommentReaction>()
+                                    .Where(r => r.CommentId == reply.CommentId)
+                                    .ToList();
+                                
+                                if (replyReactions.Any())
+                                {
+                                    dbContext.Set<CommentReaction>().RemoveRange(replyReactions);
+                                    await dbContext.SaveChangesAsync();
+                                }
+                                
+                                // Yanıtı sil
+                                dbContext.Set<Comment>().Remove(reply);
+                                await dbContext.SaveChangesAsync();
+                            }
+                        }
+                        
+                        // Ana yorumu sil
+                        var commentToDelete = dbContext.Set<Comment>()
+                            .FirstOrDefault(c => c.CommentId == model.CommentId);
+                        
+                        if (commentToDelete != null)
+                        {
+                            dbContext.Set<Comment>().Remove(commentToDelete);
+                            await dbContext.SaveChangesAsync();
+                            Console.WriteLine("DeleteComment: Yorum ve ilişkili kayıtlar başarıyla silindi");
+                            
+                            return Json(new { 
+                                success = true, 
+                                message = "Yorum başarıyla silindi.",
+                                parentCommentId = parentCommentId
+                            });
+                        }
+                    }
+                    catch (Exception innerEx)
+                    {
+                        Console.WriteLine($"DeleteComment: Manuel silme işlemi sırasında hata: {innerEx.Message}");
+                    }
+                }
+                
+                return Json(new { success = false, message = "Yorum silinirken bir hata oluştu." });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DeleteComment: Yorum silinirken hata oluştu: {ex.Message}");
+                return Json(new { success = false, message = "Yorum silinirken bir hata oluştu." });
+            }
 
             return Json(new { 
                 success = true, 
@@ -921,91 +1111,47 @@ public class PostsController : Controller
     [Route("Posts/Search")]
     public async Task<IActionResult> Search(string query, int pageNumber = 1, int pageSize = 10)
     {
-        try
+        if (string.IsNullOrWhiteSpace(query))
         {
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                // Boş sorgu durumunda Index action'a yönlendirmek yerine tüm postları gösteriyoruz
-                var allPosts = await _postRepository.GetAllAsync();
-                var activePosts = allPosts
-                    .Where(p => p.IsActive && p.Status == PostStatus.Published)
-                    .OrderByDescending(p => p.PublishedOn)
-                    .ToList();
-                    
-                var totalAllPosts = activePosts.Count;
-                var paginatedAllPosts = activePosts
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
-                    
-                ViewBag.SearchQuery = "";
-                ViewBag.TotalPosts = totalAllPosts;
-                ViewBag.CurrentPage = pageNumber;
-                ViewBag.TotalPages = (int)Math.Ceiling(totalAllPosts / (double)pageSize);
-                ViewBag.ShowAllPostsMessage = true;
-                
-                return View(paginatedAllPosts);
-            }
-
-            // Trim search query
-            query = query.Trim();
-            
-            // Türkçe karakterleri normalize et
-            var normalizedQuery = query
-                .Replace('ı', 'i')
-                .Replace('ğ', 'g')
-                .Replace('ü', 'u')
-                .Replace('ş', 's')
-                .Replace('ö', 'o')
-                .Replace('ç', 'c')
-                .Replace('İ', 'i');
-
-            var posts = await _postRepository.SearchAsync(query);
-            
-            // Normalize edilmiş sorgu ile de arama yap ve sonuçları birleştir
-            if (normalizedQuery != query)
-            {
-                var normalizedResults = await _postRepository.SearchAsync(normalizedQuery);
-                // Sonuçları birleştir ve tekrarları kaldır
-                posts = posts.Union(normalizedResults).ToList();
-            }
-            
-            var totalSearchPosts = posts.Count;
-            var paginatedSearchPosts = posts
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
+            var allPosts = await _postRepository.GetAllAsync();
+            var filteredPosts = allPosts
+                .Where(p => p.IsActive && p.Status == PostStatus.Published)
+                .OrderByDescending(p => p.PublishedOn)
                 .ToList();
-
-            ViewBag.SearchQuery = query;
-            ViewBag.TotalPosts = totalSearchPosts;
-            ViewBag.CurrentPage = pageNumber;
-            ViewBag.TotalPages = (int)Math.Ceiling(totalSearchPosts / (double)pageSize);
+                
+            var paginatedList = BlogApp.Helpers.PaginatedList<Post>.Create(filteredPosts, pageNumber, pageSize);
             
-            // Suggest related searches if no results
-            if (totalSearchPosts == 0)
-            {
-                var allTags = await _tagRepository.GetAllAsync();
-                ViewBag.SuggestedTags = allTags
-                    .Where(t => t.Name.ToLower().Contains(query.ToLower()) || 
-                               t.Name.ToLower().Contains(normalizedQuery.ToLower()))
-                    .Take(5)
-                    .ToList();
-                    
-                // Burada boş da olsa bir liste döndürüyoruz ki view doğru çalışsın
-                return View(new List<Post>());
-            }
+            // Sidebar için eklentiler
+            ViewBag.PopularTags = await _tagRepository.GetAllAsync();
+            ViewBag.RecentPosts = filteredPosts.Take(5).ToList();
+            
+            return View(paginatedList);
+        }
 
-            return View(paginatedSearchPosts);
-        }
-        catch (Exception ex)
-        {
-            // Hata durumunda log tutabilir ve kullanıcıya hata sayfası gösterebiliriz
-            return View("Error", new ErrorViewModel 
-            { 
-                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
-                ErrorMessage = "Arama sırasında bir hata oluştu: " + ex.Message 
-            });
-        }
+        query = query.Trim().ToLower();
+        var posts = await _postRepository.GetAllAsync();
+        var searchResults = posts
+            .Where(p => 
+                p.IsActive && 
+                p.Status == PostStatus.Published &&
+                (p.Title.ToLower().Contains(query) || 
+                 p.Description.ToLower().Contains(query) || 
+                 p.Content.ToLower().Contains(query) ||
+                 p.Tags.Any(t => t.Name.ToLower().Contains(query))))
+            .OrderByDescending(p => p.PublishedOn)
+            .ToList();
+            
+        var paginatedResults = BlogApp.Helpers.PaginatedList<Post>.Create(searchResults, pageNumber, pageSize);
+        
+        // Sidebar için eklentiler
+        ViewBag.PopularTags = await _tagRepository.GetAllAsync();
+        ViewBag.RecentPosts = posts
+            .Where(p => p.IsActive && p.Status == PostStatus.Published)
+            .OrderByDescending(p => p.PublishedOn)
+            .Take(5)
+            .ToList();
+        
+        return View(paginatedResults);
     }
 
     [Authorize]
@@ -1085,5 +1231,33 @@ public class PostsController : Controller
         result = result.Trim('-');
 
         return result;
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Route("Posts/UploadImage")]
+    public async Task<IActionResult> UploadImage(IFormFile upload)
+    {
+        if (upload == null || upload.Length == 0)
+        {
+            return Json(new { uploaded = false, error = new { message = "No file uploaded" } });
+        }
+
+        try
+        {
+            var url = await ImageHelper.ValidateAndSaveContentImageAsync(upload);
+            return Json(new { uploaded = true, url });
+        }
+        catch (ImageValidationException ex)
+        {
+            return Json(new { uploaded = false, error = new { message = ex.Message } });
+        }
+        catch (Exception ex)
+        {
+            // Log the exception
+            Console.WriteLine($"Image upload error: {ex.Message}");
+            return Json(new { uploaded = false, error = new { message = "An error occurred while uploading the image. Please try again." } });
+        }
     }
 } 

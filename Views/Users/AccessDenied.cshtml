@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Erişim Reddedildi";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 mt-5">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <i class="bi bi-shield-exclamation text-danger" style="font-size: 4rem;"></i>
+                    <h1 class="card-title mt-3">@ViewData["Title"]</h1>
+                    <p class="lead mt-3">Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
+                    <hr>
+                    <p>Bu içeriği görüntülemek için gerekli izinlere sahip değilsiniz.</p>
+                    
+                    @if (!string.IsNullOrEmpty(Context.Request.Query["ReturnUrl"]))
+                    {
+                        <p class="small text-muted">
+                            İstek yapılan sayfa: @Context.Request.Query["ReturnUrl"]
+                        </p>
+                    }
+                    
+                    <div class="mt-4">
+                        <a href="/" class="btn btn-primary">
+                            <i class="bi bi-house-door me-2"></i>Ana Sayfaya Dön
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

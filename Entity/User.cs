@@ -17,7 +17,7 @@ public class User
         IsAdmin = false;
         Posts = new List<Post>();
         Comments = new List<Comment>();
-        Reactions = new List<PostReaction>();
+        PostReactions = new List<PostReaction>();
     }
 
     [Key]
@@ -46,5 +46,5 @@ public class User
 
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
-    public virtual ICollection<PostReaction> Reactions { get; set; } = new List<PostReaction>();
+    public virtual ICollection<PostReaction> PostReactions { get; set; } = new List<PostReaction>();
 } 

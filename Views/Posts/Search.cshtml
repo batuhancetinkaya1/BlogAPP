@@ -1,29 +1,35 @@
-@model List<BlogApp.Entity.Post>
+@model BlogApp.Helpers.PaginatedList<BlogApp.Entity.Post>
 
 @{
     ViewData["Title"] = "Arama Sonuçları";
+    var query = Context.Request.Query["query"].ToString();
 }
 
 <div class="container">
     <div class="row">
-        <div class="col-md-12">
-            @if (!string.IsNullOrEmpty(ViewBag.SearchQuery))
+        <div class="col-md-8">
+            <h2>@ViewData["Title"]: "@query"</h2>
+            
+            @if (!string.IsNullOrEmpty(query))
             {
-                <h2 class="mb-3">@ViewData["Title"]: "@ViewBag.SearchQuery"</h2>
-                <p class="text-muted mb-4">@ViewBag.TotalPosts sonuç bulundu.</p>
-            }
-            else if (ViewBag.ShowAllPostsMessage == true)
-            {
-                <h2 class="mb-3">Tüm Blog Yazıları</h2>
-                <div class="alert alert-info mb-4">
-                    <i class="bi bi-info-circle me-2"></i> Arama sorgusu girilmediği için tüm yazılar gösteriliyor.
-                </div>
+                if (!Model.Any())
+                {
+                    <div class="alert alert-info mt-3">
+                        "<strong>@query</strong>" araması için sonuç bulunamadı.
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">@Model.TotalItems adet sonuç bulundu.</p>
+                }
             }
             else
             {
-                <h2 class="mb-3">@ViewData["Title"]</h2>
+                <div class="alert alert-warning mt-3">
+                    Arama yapmak için yukarıdaki arama kutusunu kullanın.
+                </div>
             }
-
+            
             @if (Model.Any())
             {
                 foreach (var post in Model)
@@ -46,132 +52,87 @@
                                         <p class="card-text">@(post.Description.Length > 150 ? post.Description.Substring(0, 150) + "..." : post.Description)</p>
                                     }
                                     
-                                    <div class="mt-auto">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <div class="d-flex align-items-center">
-                                                <img src="@(string.IsNullOrEmpty(post.User.Image) ? "/img/profiles/default.jpg" : post.User.Image)" 
-                                                     class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;" 
-                                                     alt="@post.User.UserName">
-                                                <a href="/users/@post.User.UserName" class="text-muted small text-decoration-none">
-                                                    @post.User.UserName
-                                                    @if (post.User.IsAdmin)
-                                                    {
-                                                        <i class="bi bi-patch-check-fill text-primary" title="Admin"></i>
-                                                    }
-                                                </a>
-                                            </div>
-                                            <small class="text-muted">@post.PublishedOn?.ToString("dd MMM yyyy")</small>
-                                        </div>
-                                        
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div class="text-muted small">
-                                                <i class="bi bi-hand-thumbs-up me-1"></i>@post.Reactions.Count(r => r.IsLike)
-                                                <span class="mx-1">•</span>
-                                                <i class="bi bi-chat me-1"></i>@post.Comments.Count
-                                                @if (post.ReadTime.HasValue && post.ReadTime > 0)
-                                                {
-                                                    <span class="mx-1">•</span>
-                                                    <i class="bi bi-clock me-1"></i>@post.ReadTime <text>dk</text>
-                                                }
-                                            </div>
-
-                                            <div>
-                                                @foreach (var tag in post.Tags.Take(3))
-                                                {
-                                                    string tagColor = "secondary";
-                                                    if (tag.Color.HasValue)
-                                                    {
-                                                        switch(tag.Color.Value)
-                                                        {
-                                                            case BlogApp.Entity.TagColors.Primary: tagColor = "primary"; break;
-                                                            case BlogApp.Entity.TagColors.Success: tagColor = "success"; break;
-                                                            case BlogApp.Entity.TagColors.Danger: tagColor = "danger"; break;
-                                                            case BlogApp.Entity.TagColors.Warning: tagColor = "warning"; break;
-                                                            case BlogApp.Entity.TagColors.Info: tagColor = "info"; break;
-                                                            case BlogApp.Entity.TagColors.Orange: tagColor = "orange"; break;
-                                                            case BlogApp.Entity.TagColors.Dark: tagColor = "dark"; break;
-                                                            default: tagColor = "secondary"; break;
-                                                        }
-                                                    }
-                                                    
-                                                    string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
-                                                    <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none me-1" style="@(tagColor == "info" ? "background-color: #0dcaf0 !important;" : "")">@tag.Name</a>
-                                                }
-                                                @if (post.Tags.Count > 3)
-                                                {
-                                                    <span class="badge bg-light text-dark">+@(post.Tags.Count - 3)</span>
-                                                }
-                                            </div>
-                                        </div>
+                                    <div class="d-flex mt-auto align-items-center text-muted">
+                                        <img src="@(string.IsNullOrEmpty(post.User.Image) ? "/img/profiles/default.jpg" : post.User.Image)" 
+                                             class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;">
+                                        <small>
+                                            <a href="/users/@post.User.UserName" class="text-decoration-none">@post.User.UserName</a>
+                                            <span class="mx-1">-</span>
+                                            <time datetime="@post.CreatedAt.ToString("yyyy-MM-dd")">@post.CreatedAt.ToString("dd.MM.yyyy")</time>
+                                        </small>
+                                    </div>
+                                    
+                                    <div class="mt-2">
+                                        @foreach (var tag in post.Tags)
+                                        {
+                                            <partial name="_Tag" model="tag" />
+                                        }
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 }
-
-                @if (ViewBag.TotalPages > 1)
+                
+                <!-- Pagination -->
+                @if (Model.TotalPages > 1)
                 {
-                    <nav aria-label="Page navigation" class="mt-4">
+                    <nav aria-label="Sayfalama">
                         <ul class="pagination justify-content-center">
-                            @if (ViewBag.CurrentPage > 1)
+                            @if (Model.HasPreviousPage)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" href="/Posts/Search?query=@ViewBag.SearchQuery&pageNumber=@(ViewBag.CurrentPage - 1)">Önceki</a>
+                                    <a class="page-link" asp-action="Search" asp-route-query="@query" asp-route-pageNumber="@(Model.PageIndex - 1)">Önceki</a>
                                 </li>
                             }
 
-                            @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                            @for (int i = 1; i <= Model.TotalPages; i++)
                             {
-                                <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
-                                    <a class="page-link" href="/Posts/Search?query=@ViewBag.SearchQuery&pageNumber=@i">@i</a>
+                                <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-action="Search" asp-route-query="@query" asp-route-pageNumber="@i">@i</a>
                                 </li>
                             }
 
-                            @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+                            @if (Model.HasNextPage)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" href="/Posts/Search?query=@ViewBag.SearchQuery&pageNumber=@(ViewBag.CurrentPage + 1)">Sonraki</a>
+                                    <a class="page-link" asp-action="Search" asp-route-query="@query" asp-route-pageNumber="@(Model.PageIndex + 1)">Sonraki</a>
                                 </li>
                             }
                         </ul>
                     </nav>
                 }
             }
-            else
-            {
-                <div class="alert alert-info">
-                    <h5><i class="bi bi-search"></i> Aramanıza uygun sonuç bulunamadı</h5>
-                    <p>Lütfen farklı anahtar kelimelerle tekrar deneyin.</p>
-                    
-                    @if (ViewBag.SuggestedTags != null && ViewBag.SuggestedTags.Any())
-                    {
-                        <div class="mt-3">
-                            <h6>İlgili olabilecek etiketler:</h6>
-                            <div class="d-flex flex-wrap">
-                                @foreach (var tag in ViewBag.SuggestedTags)
-                                {
-                                    string tagColor = tag.Color?.ToString().ToLower() ?? "secondary";
-                                    string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
-                                    <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none me-2 mb-2 p-2">
-                                        <i class="bi bi-tag"></i> @tag.Name
-                                    </a>
-                                }
-                            </div>
-                        </div>
-                    }
-                    
-                    <div class="mt-3">
-                        <h6>Arama ipuçları:</h6>
-                        <ul>
-                            <li>Yazım hatası olup olmadığını kontrol edin</li>
-                            <li>Daha genel terimler kullanmayı deneyin</li>
-                            <li>Anahtar kelimelerinizi değiştirmeyi deneyin</li>
-                            <li>Türkçe karakterler yerine İngilizce karşılıklarını deneyin (ö yerine o, ç yerine c gibi)</li>
-                        </ul>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Sidebar Widget -->
+            <div class="card mb-4">
+                <div class="card-header">Popüler Etiketler</div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach (var tag in ViewBag.PopularTags ?? new List<BlogApp.Entity.Tag>())
+                        {
+                            <partial name="_Tag" model="tag" />
+                        }
                     </div>
                 </div>
-            }
+            </div>
+            
+            <!-- Recent Posts Widget -->
+            <div class="card">
+                <div class="card-header">Son Yazılar</div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var recent in ViewBag.RecentPosts ?? new List<BlogApp.Entity.Post>())
+                        {
+                            <li class="mb-2">
+                                <a href="/posts/@recent.Url" class="text-decoration-none">@recent.Title</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div> 

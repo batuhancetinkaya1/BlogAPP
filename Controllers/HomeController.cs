@@ -72,6 +72,12 @@ namespace BlogApp.Controllers
             return View();
         }
 
+        [Route("gizlilik")]
+        public IActionResult Gizlilik()
+        {
+            return View();
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {

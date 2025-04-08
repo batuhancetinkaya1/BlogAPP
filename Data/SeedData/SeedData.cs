@@ -41,17 +41,50 @@ namespace BlogApp.Data.SeedData
             };
             context.Users.Add(regularUser);
 
-            // Add another user
+            // Add another user with admin role
             var anotherUser = new User
             {
                 UserName = "developer",
                 Email = "developer@example.com",
                 Password = BCrypt.Net.BCrypt.HashPassword("dev123"),
-                IsAdmin = false,
+                IsAdmin = true,
                 CreatedAt = DateTime.UtcNow,
                 Image = "/img/profiles/default.jpg"
             };
             context.Users.Add(anotherUser);
+            
+            // Add more sample users
+            var additionalUsers = new List<User>
+            {
+                new User
+                {
+                    UserName = "john_doe",
+                    Email = "john@example.com",
+                    Password = BCrypt.Net.BCrypt.HashPassword("password123"),
+                    IsAdmin = false,
+                    CreatedAt = DateTime.UtcNow.AddDays(-5),
+                    Image = "/img/profiles/default.jpg"
+                },
+                new User
+                {
+                    UserName = "jane_smith",
+                    Email = "jane@example.com",
+                    Password = BCrypt.Net.BCrypt.HashPassword("password123"),
+                    IsAdmin = false,
+                    CreatedAt = DateTime.UtcNow.AddDays(-4),
+                    Image = "/img/profiles/default.jpg"
+                },
+                new User
+                {
+                    UserName = "blogger",
+                    Email = "blogger@example.com",
+                    Password = BCrypt.Net.BCrypt.HashPassword("password123"),
+                    IsAdmin = false,
+                    CreatedAt = DateTime.UtcNow.AddDays(-3),
+                    Image = "/img/profiles/default.jpg"
+                }
+            };
+            context.Users.AddRange(additionalUsers);
 
             // Add tags
             var tags = new List<Tag>
@@ -65,7 +98,13 @@ namespace BlogApp.Data.SeedData
                 new Tag { Name = "CSS", Url = "css", Color = TagColors.Info, IsActive = true, CreatedAt = DateTime.UtcNow },
                 new Tag { Name = "React", Url = "react", Color = TagColors.Info, IsActive = true, CreatedAt = DateTime.UtcNow },
                 new Tag { Name = "Angular", Url = "angular", Color = TagColors.Danger, IsActive = true, CreatedAt = DateTime.UtcNow },
-                new Tag { Name = "Vue.js", Url = "vuejs", Color = TagColors.Success, IsActive = true, CreatedAt = DateTime.UtcNow }
+                new Tag { Name = "Vue.js", Url = "vuejs", Color = TagColors.Success, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new Tag { Name = "Python", Url = "python", Color = TagColors.Primary, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new Tag { Name = "Java", Url = "java", Color = TagColors.Danger, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new Tag { Name = "Docker", Url = "docker", Color = TagColors.Info, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new Tag { Name = "DevOps", Url = "devops", Color = TagColors.Warning, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new Tag { Name = "Machine Learning", Url = "machine-learning", Color = TagColors.Success, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new Tag { Name = "Data Science", Url = "data-science", Color = TagColors.Primary, IsActive = true, CreatedAt = DateTime.UtcNow }
             };
             context.Tags.AddRange(tags);
 
@@ -142,6 +181,64 @@ namespace BlogApp.Data.SeedData
                 }
             };
             context.Posts.AddRange(posts);
+            
+            // Add more sample posts
+            var additionalPosts = new List<Post>
+            {
+                new Post
+                {
+                    Title = "Introduction to Python Programming",
+                    Content = "<p>Python is a high-level, interpreted programming language known for its simplicity and readability.</p><p>Python's syntax allows programmers to express concepts in fewer lines of code than languages like C++ or Java. It supports multiple programming paradigms, including procedural, object-oriented, and functional programming.</p><p>Python is widely used in data science, machine learning, web development, and automation.</p>",
+                    Description = "Learn the basics of Python programming language",
+                    Url = "introduction-to-python-programming",
+                    CreatedAt = DateTime.UtcNow.AddDays(-5),
+                    PublishedOn = DateTime.UtcNow.AddDays(-5),
+                    Status = PostStatus.Published,
+                    IsActive = true,
+                    UserId = additionalUsers[0].UserId,
+                    Tags = new List<Tag> { tags[10] }
+                },
+                new Post
+                {
+                    Title = "Docker for Beginners",
+                    Content = "<p>Docker is a platform that enables developers to build, package, and deploy applications in containers.</p><p>Containers are lightweight, portable, and self-sufficient environments that can run on any machine with Docker installed. This makes it easier to develop and deploy applications consistently across different environments.</p><p>In this post, we'll explore the basics of Docker and how to get started with containerization.</p>",
+                    Description = "Get started with Docker containerization",
+                    Url = "docker-for-beginners",
+                    CreatedAt = DateTime.UtcNow.AddDays(-4),
+                    PublishedOn = DateTime.UtcNow.AddDays(-4),
+                    Status = PostStatus.Published,
+                    IsActive = true,
+                    UserId = additionalUsers[1].UserId,
+                    Tags = new List<Tag> { tags[12], tags[13] }
+                },
+                new Post
+                {
+                    Title = "Getting Started with Machine Learning",
+                    Content = "<p>Machine Learning is a subset of artificial intelligence that enables computers to learn and improve from experience without being explicitly programmed.</p><p>In this post, we'll cover the basics of machine learning, including supervised and unsupervised learning, common algorithms, and tools for getting started.</p><p>We'll also explore how to prepare your data, train models, and evaluate their performance.</p>",
+                    Description = "An introduction to machine learning concepts and techniques",
+                    Url = "getting-started-with-machine-learning",
+                    CreatedAt = DateTime.UtcNow.AddDays(-3),
+                    PublishedOn = DateTime.UtcNow.AddDays(-3),
+                    Status = PostStatus.Published,
+                    IsActive = true,
+                    UserId = additionalUsers[2].UserId,
+                    Tags = new List<Tag> { tags[14], tags[15], tags[10] }
+                },
+                new Post
+                {
+                    Title = "Modern Web Development with React",
+                    Content = "<p>React has revolutionized the way we build web applications, offering a component-based architecture that makes UI development more efficient and maintainable.</p><p>In this post, we'll explore key concepts like components, props, state, hooks, and the virtual DOM. We'll also look at best practices for structuring React applications and managing application state.</p><p>By the end, you'll have a good understanding of what makes React so powerful for building modern web applications.</p>",
+                    Description = "Explore modern web development techniques with React",
+                    Url = "modern-web-development-with-react",
+                    CreatedAt = DateTime.UtcNow.AddDays(-2),
+                    PublishedOn = DateTime.UtcNow.AddDays(-2),
+                    Status = PostStatus.Published,
+                    IsActive = true,
+                    UserId = adminUser.UserId,
+                    Tags = new List<Tag> { tags[7], tags[1], tags[5] }
+                }
+            };
+            context.Posts.AddRange(additionalPosts);
 
             // Save changes to get IDs
             await context.SaveChangesAsync();
@@ -197,6 +294,67 @@ namespace BlogApp.Data.SeedData
             };
             context.Comments.AddRange(comments);
 
+            // Add more comments for additional posts
+            var additionalComments = new List<Comment>
+            {
+                new Comment
+                {
+                    Content = "Python is definitely my favorite language for data science projects!",
+                    CreatedAt = DateTime.UtcNow.AddDays(-5).AddHours(2),
+                    PublishedOn = DateTime.UtcNow.AddDays(-5).AddHours(2),
+                    IsActive = true,
+                    PostId = additionalPosts[0].PostId,
+                    UserId = regularUser.UserId
+                },
+                new Comment
+                {
+                    Content = "Can you recommend some good Python libraries for machine learning?",
+                    CreatedAt = DateTime.UtcNow.AddDays(-5).AddHours(3),
+                    PublishedOn = DateTime.UtcNow.AddDays(-5).AddHours(3),
+                    IsActive = true,
+                    PostId = additionalPosts[0].PostId,
+                    UserId = additionalUsers[2].UserId
+                },
+                new Comment
+                {
+                    Content = "I'd recommend starting with scikit-learn, TensorFlow, and PyTorch.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-5).AddHours(4),
+                    PublishedOn = DateTime.UtcNow.AddDays(-5).AddHours(4),
+                    IsActive = true,
+                    PostId = additionalPosts[0].PostId,
+                    UserId = additionalUsers[0].UserId,
+                    ParentCommentId = 7 // This will reference the previous comment
+                },
+                new Comment
+                {
+                    Content = "Docker has made my deployment process so much easier!",
+                    CreatedAt = DateTime.UtcNow.AddDays(-4).AddHours(1),
+                    PublishedOn = DateTime.UtcNow.AddDays(-4).AddHours(1),
+                    IsActive = true,
+                    PostId = additionalPosts[1].PostId,
+                    UserId = adminUser.UserId
+                },
+                new Comment
+                {
+                    Content = "Great introduction to machine learning concepts!",
+                    CreatedAt = DateTime.UtcNow.AddDays(-3).AddHours(6),
+                    PublishedOn = DateTime.UtcNow.AddDays(-3).AddHours(6),
+                    IsActive = true,
+                    PostId = additionalPosts[2].PostId,
+                    UserId = additionalUsers[0].UserId
+                },
+                new Comment
+                {
+                    Content = "React has changed the way I think about front-end development.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-2).AddHours(2),
+                    PublishedOn = DateTime.UtcNow.AddDays(-2).AddHours(2),
+                    IsActive = true,
+                    PostId = additionalPosts[3].PostId,
+                    UserId = additionalUsers[1].UserId
+                }
+            };
+            context.Comments.AddRange(additionalComments);
+
             // Add some reactions
             var reactions = new List<PostReaction>
             {
@@ -244,6 +402,75 @@ namespace BlogApp.Data.SeedData
                 }
             };
             context.PostReactions.AddRange(reactions);
+
+            // Add reactions for additional posts
+            var additionalReactions = new List<PostReaction>
+            {
+                new PostReaction
+                {
+                    IsLike = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-5),
+                    PostId = additionalPosts[0].PostId,
+                    UserId = regularUser.UserId
+                },
+                new PostReaction
+                {
+                    IsLike = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-5),
+                    PostId = additionalPosts[0].PostId,
+                    UserId = adminUser.UserId
+                },
+                new PostReaction
+                {
+                    IsLike = false,
+                    CreatedAt = DateTime.UtcNow.AddDays(-5),
+                    PostId = additionalPosts[0].PostId,
+                    UserId = additionalUsers[1].UserId
+                },
+                new PostReaction
+                {
+                    IsLike = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-4),
+                    PostId = additionalPosts[1].PostId,
+                    UserId = additionalUsers[0].UserId
+                },
+                new PostReaction
+                {
+                    IsLike = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-4),
+                    PostId = additionalPosts[1].PostId,
+                    UserId = regularUser.UserId
+                },
+                new PostReaction
+                {
+                    IsLike = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-3),
+                    PostId = additionalPosts[2].PostId,
+                    UserId = adminUser.UserId
+                },
+                new PostReaction
+                {
+                    IsLike = false,
+                    CreatedAt = DateTime.UtcNow.AddDays(-3),
+                    PostId = additionalPosts[2].PostId,
+                    UserId = additionalUsers[1].UserId
+                },
+                new PostReaction
+                {
+                    IsLike = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-2),
+                    PostId = additionalPosts[3].PostId,
+                    UserId = additionalUsers[0].UserId
+                },
+                new PostReaction
+                {
+                    IsLike = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-2),
+                    PostId = additionalPosts[3].PostId,
+                    UserId = additionalUsers[2].UserId
+                }
+            };
+            context.PostReactions.AddRange(additionalReactions);
 
             // Save all changes
             await context.SaveChangesAsync();

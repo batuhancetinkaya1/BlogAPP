@@ -47,12 +47,13 @@
             </dd>
         </dl>
 
-        <form asp-action="Delete" method="post">
+        <form asp-action="Delete" asp-route-id="@Model.PostId" method="post">
             <input type="hidden" asp-for="PostId" />
+            @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-danger">
                 <i class="bi bi-trash me-2"></i>Sil
             </button>
-            <a asp-action="Index" class="btn btn-secondary">
+            <a asp-action="Details" asp-route-url="@Model.Url" class="btn btn-secondary">
                 <i class="bi bi-arrow-left me-2"></i>Geri Dön
             </a>
         </form>

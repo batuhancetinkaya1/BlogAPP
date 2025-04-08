@@ -1,4 +1,4 @@
-@model IEnumerable<BlogApp.Entity.Post>
+@model BlogApp.Helpers.PaginatedList<BlogApp.Entity.Post>
 @using BlogApp.Entity
 
 @{
@@ -68,7 +68,7 @@
                             <td>
                                 @foreach (var tag in post.Tags)
                                 {
-                                    <span class="badge bg-@tag.Color?.ToString().ToLower() me-1">@tag.Name</span>
+                                    <partial name="_Tag" model="tag" />
                                 }
                             </td>
                             <td>
@@ -82,17 +82,22 @@
                                     </a>
                                     @if (post.Status != PostStatus.Published)
                                     {
-                                        <a asp-controller="Posts" asp-action="Publish" asp-route-id="@post.PostId"
-                                           class="btn btn-sm btn-success" onclick="return confirm('Yazıyı yayınlamak istediğinize emin misiniz?')">
-                                            <i class="bi bi-check-circle"></i>
-                                        </a>
+                                        <form action="/Posts/Publish/@post.PostId" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="bi bi-check-circle"></i> Yayınla
+                                            </button>
+                                        </form>
                                     }
                                     @if (post.Status != PostStatus.Archived)
                                     {
-                                        <a asp-controller="Posts" asp-action="Archive" asp-route-id="@post.PostId"
-                                           class="btn btn-sm btn-info" onclick="return confirm('Yazıyı arşivlemek istediğinize emin misiniz?')">
-                                            <i class="bi bi-archive"></i>
-                                        </a>
+                                        <form action="/Posts/Archive/@post.PostId" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-info" 
+                                                onclick="return confirm('Yazıyı arşivlemek istediğinize emin misiniz?')">
+                                                <i class="bi bi-archive"></i>
+                                            </button>
+                                        </form>
                                     }
                                     <a asp-controller="Posts" asp-action="Delete" asp-route-id="@post.PostId"
                                        class="btn btn-sm btn-danger" onclick="return confirm('Yazıyı silmek istediğinize emin misiniz?')">
@@ -106,14 +111,28 @@
             </table>
         </div>
 
-        @if (ViewBag.TotalPages > 1)
+        @if (Model.TotalPages > 1)
         {
             <nav aria-label="Sayfalama">
                 <ul class="pagination justify-content-center">
-                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    @if (Model.HasPreviousPage)
                     {
-                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                        <li class="page-item">
+                            <a class="page-link" asp-action="MyPosts" asp-route-pageNumber="@(Model.PageIndex - 1)">Önceki</a>
+                        </li>
+                    }
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == Model.PageIndex ? "active" : "")">
                             <a class="page-link" asp-action="MyPosts" asp-route-pageNumber="@i">@i</a>
+                        </li>
+                    }
+
+                    @if (Model.HasNextPage)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" asp-action="MyPosts" asp-route-pageNumber="@(Model.PageIndex + 1)">Sonraki</a>
                         </li>
                     }
                 </ul>

@@ -13,14 +13,14 @@ namespace BlogApp.Data.Concrete.EfCore
             _context = context;
         }
 
-        public async Task<Tag> GetByIdAsync(int id)
+        public async Task<Tag?> GetByIdAsync(int id)
         {
             return await _context.Tags
                 .Include(t => t.Posts)
                 .FirstOrDefaultAsync(t => t.TagId == id);
         }
 
-        public async Task<Tag> GetByUrlAsync(string url)
+        public async Task<Tag?> GetByUrlAsync(string url)
         {
             return await _context.Tags
                 .Include(t => t.Posts)

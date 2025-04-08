@@ -13,11 +13,12 @@ namespace BlogApp.Data.Concrete.EfCore
             _context = context;
         }
 
-        public async Task<Comment> GetByIdAsync(int id)
+        public async Task<Comment?> GetByIdAsync(int id)
         {
             return await _context.Comments
                 .Include(c => c.User)
                 .Include(c => c.Post)
+                .Include(c => c.Reactions)
                 .FirstOrDefaultAsync(c => c.CommentId == id);
         }
 
@@ -25,6 +26,7 @@ namespace BlogApp.Data.Concrete.EfCore
         {
             return await _context.Comments
                 .Include(c => c.User)
+                .Include(c => c.Reactions)
                 .Where(c => c.PostId == postId)
                 .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
@@ -34,6 +36,7 @@ namespace BlogApp.Data.Concrete.EfCore
         {
             return await _context.Comments
                 .Include(c => c.Post)
+                .Include(c => c.Reactions)
                 .Where(c => c.UserId == userId)
                 .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
@@ -55,6 +58,21 @@ namespace BlogApp.Data.Concrete.EfCore
         {
             _context.Comments.Remove(comment);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<Comment>> GetRepliesByParentIdAsync(int parentId)
+        {
+            return await _context.Comments
+                .Include(c => c.User)
+                .Include(c => c.Reactions)
+                .Where(c => c.ParentCommentId == parentId)
+                .OrderBy(c => c.CreatedAt)
+                .ToListAsync();
+        }
+
+        public DbContext GetDbContext()
+        {
+            return _context;
         }
     }
 } 

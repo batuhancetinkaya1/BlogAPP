@@ -1,3 +1,4 @@
+@using BlogApp.Helpers
 @model BlogApp.Models.ViewModels.PostListViewModel
 
 @{
@@ -67,12 +68,12 @@
                                             <div class="mt-auto">
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <div class="d-flex align-items-center">
-                                                        <img src="@(string.IsNullOrEmpty(post.User.Image) ? "/img/profiles/default.jpg" : post.User.Image)" 
+                                                        <img src="@(post.User?.Image != null ? ImageHelper.GetProfileImageUrl(post.User.Image) : "/img/profiles/default.jpg")" 
                                                              class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;" 
-                                                             alt="@post.User.UserName">
-                                                        <a href="/users/@post.User.UserName" class="text-muted small text-decoration-none">
-                                                            @post.User.UserName
-                                                            @if (post.User.IsAdmin)
+                                                             alt="@(post.User?.UserName ?? "Kullanıcı")">
+                                                        <a href="/users/@(post.User?.UserName ?? "unknown")" class="text-muted small text-decoration-none">
+                                                            @(post.User?.UserName ?? "Kullanıcı")
+                                                            @if (post.User?.IsAdmin == true)
                                                             {
                                                                 <i class="bi bi-patch-check-fill text-primary" title="Admin"></i>
                                                             }

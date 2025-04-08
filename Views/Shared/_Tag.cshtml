@@ -1,0 +1,30 @@
+@model BlogApp.Entity.Tag
+@using BlogApp.Entity
+
+@{
+    string tagColor = "secondary";
+    string textClass = "text-white";
+    string customStyle = "";
+    
+    if (Model.Color.HasValue)
+    {
+        switch(Model.Color.Value)
+        {
+            case TagColors.Primary: tagColor = "primary"; break;
+            case TagColors.Success: tagColor = "success"; break;
+            case TagColors.Danger: tagColor = "danger"; break;
+            case TagColors.Warning: tagColor = "warning"; textClass = "text-dark"; break;
+            case TagColors.Info: 
+                tagColor = ""; 
+                textClass = "text-dark"; 
+                customStyle = "background-color: #0dcaf0 !important;"; 
+                break;
+            case TagColors.Orange: tagColor = "orange"; break;
+            case TagColors.Dark: tagColor = "dark"; break;
+            default: tagColor = "secondary"; break;
+        }
+    }
+}
+
+<a href="/tags/@Model.Url" class="badge @(string.IsNullOrEmpty(tagColor) ? "" : $"bg-{tagColor}") @textClass text-decoration-none me-2" 
+   @(string.IsNullOrEmpty(customStyle) ? "" : $"style=\"{customStyle}\"")>@Model.Name</a> 

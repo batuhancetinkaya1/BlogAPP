@@ -13,7 +13,7 @@ namespace BlogApp.Data.Concrete.EfCore
             _context = context;
         }
 
-        public async Task<Post> GetByIdAsync(int id)
+        public async Task<Post?> GetByIdAsync(int id)
         {
             return await _context.Posts
                 .Include(p => p.User)
@@ -132,30 +132,19 @@ namespace BlogApp.Data.Concrete.EfCore
 
         public async Task<Post> GetByUrlWithCommentsAndReactions(string url)
         {
-            Console.WriteLine($"Repository: GetByUrlWithCommentsAndReactions çağrıldı, URL: {url}");
-            
             var post = await _context.Posts
-                .Include(p => p.User)
-                .Include(p => p.Tags)
-                .Include(p => p.Comments)
-                    .ThenInclude(c => c.User)
                 .Include(p => p.Comments)
                     .ThenInclude(c => c.Reactions)
-                        .ThenInclude(r => r.User)
                 .Include(p => p.Reactions)
-                    .ThenInclude(r => r.User)
-                .AsSplitQuery() // Büyük sorgular için performans iyileştirmesi
+                .Include(p => p.Tags)
                 .FirstOrDefaultAsync(p => p.Url == url);
-            
-            if (post != null)
+
+            if (post == null)
             {
-                Console.WriteLine($"Repository: Post bulundu, ID: {post.PostId}, Yorumlar: {post.Comments?.Count ?? 0}, Beğeniler: {post.Reactions?.Count ?? 0}");
+                throw new KeyNotFoundException($"Post with URL '{url}' not found.");
             }
-            else
-            {
-                Console.WriteLine("Repository: Post bulunamadı!");
-            }
-            
+
+            Console.WriteLine($"Repository: Post bulundu, ID: {post.PostId}, Yorumlar: {post.Comments?.Count ?? 0}, Beğeniler: {post.Reactions?.Count ?? 0}");
             return post;
         }
     }

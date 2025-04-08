@@ -169,14 +169,9 @@ namespace BlogApp.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("UserId1")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("PostReactionId");
 
                     b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
 
                     b.HasIndex("PostId", "UserId")
                         .IsUnique();
@@ -341,14 +336,10 @@ namespace BlogApp.Migrations
                         .IsRequired();
 
                     b.HasOne("BlogApp.Entity.User", "User")
-                        .WithMany()
+                        .WithMany("PostReactions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("BlogApp.Entity.User", null)
-                        .WithMany("Reactions")
-                        .HasForeignKey("UserId1");
 
                     b.Navigation("Post");
 
@@ -388,9 +379,9 @@ namespace BlogApp.Migrations
                 {
                     b.Navigation("Comments");
 
-                    b.Navigation("Posts");
+                    b.Navigation("PostReactions");
 
-                    b.Navigation("Reactions");
+                    b.Navigation("Posts");
                 });
 #pragma warning restore 612, 618
         }

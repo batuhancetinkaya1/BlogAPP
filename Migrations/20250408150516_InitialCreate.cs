@@ -126,8 +126,7 @@ namespace BlogApp.Migrations
                     PostId = table.Column<int>(type: "INTEGER", nullable: false),
                     UserId = table.Column<int>(type: "INTEGER", nullable: false),
                     IsLike = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UserId1 = table.Column<int>(type: "INTEGER", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -144,11 +143,6 @@ namespace BlogApp.Migrations
                         principalTable: "Users",
                         principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_PostReactions_Users_UserId1",
-                        column: x => x.UserId1,
-                        principalTable: "Users",
-                        principalColumn: "UserId");
                 });
 
             migrationBuilder.CreateTable(
@@ -239,11 +233,6 @@ namespace BlogApp.Migrations
                 name: "IX_PostReactions_UserId",
                 table: "PostReactions",
                 column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PostReactions_UserId1",
-                table: "PostReactions",
-                column: "UserId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Posts_Url",

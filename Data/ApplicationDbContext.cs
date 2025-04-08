@@ -74,7 +74,7 @@ namespace BlogApp.Data
 
             modelBuilder.Entity<PostReaction>()
                 .HasOne(r => r.User)
-                .WithMany()
+                .WithMany(u => u.PostReactions)
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 

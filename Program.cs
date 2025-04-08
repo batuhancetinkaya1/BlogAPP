@@ -7,6 +7,8 @@ using BlogApp.Data.Concrete.EfCore;
 using BlogApp.Data.SeedData;
 using BlogApp.Entity;
 using Microsoft.AspNetCore.Antiforgery;
+using BlogApp.Middleware;
+using BlogApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +62,10 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 
+// Register Services
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<INotificationService, TempDataNotificationService>();
+
 var app = builder.Build();
 
 // Seed the database
@@ -94,6 +100,9 @@ else
     app.UseDeveloperExceptionPage();
 }
 
+// Use custom error handling middleware
+app.UseErrorHandling();
+
 // app.UseHttpsRedirection(); // HTTPS yönlendirme devre dışı bırakıldı
 app.UseStaticFiles();
 app.UseRouting();
@@ -103,7 +112,7 @@ app.UseAuthorization();
 // AntiForgery özelleştirilmiş middleware
 app.Use(async (context, next) =>
 {
-    var path = context.Request.Path.Value;
+    var path = context.Request.Path.Value ?? string.Empty;
     if (context.Request.Method == "POST" && 
         (path.Contains("/Posts/AddReaction") || 
          path.Contains("/Posts/AddComment") || 
@@ -131,7 +140,27 @@ app.Use(async (context, next) =>
 // CSRF middleware'ini ekleyelim
 app.UseAntiforgery();
 
-// Tüm controller route'larından önce "{controller=Home}/{action=Index}/{id?}" pattern'ı ekleyelim
+// Route configurations
+app.MapControllerRoute(
+    name: "delete_post",
+    pattern: "Posts/Delete/{id:int}",
+    defaults: new { controller = "Posts", action = "Delete" });
+
+app.MapControllerRoute(
+    name: "archive_post",
+    pattern: "Posts/Archive/{id:int}",
+    defaults: new { controller = "Posts", action = "Archive" });
+
+app.MapControllerRoute(
+    name: "publish_post",
+    pattern: "Posts/Publish/{id:int}",
+    defaults: new { controller = "Posts", action = "Publish" });
+
+app.MapControllerRoute(
+    name: "user_profile",
+    pattern: "users/{username}",
+    defaults: new { controller = "Users", action = "Profile" });
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
