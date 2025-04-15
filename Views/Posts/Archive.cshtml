@@ -29,7 +29,7 @@
                                             <small class="text-muted">
                                                 @foreach (var tag in post.Tags)
                                                 {
-                                                    <span class="badge bg-@tag.Color?.ToString().ToLower() me-1">@tag.Name</span>
+                                                    <span class="badge bg-@tag.Color.ToString().ToLower() me-1">@tag.Name</span>
                                                 }
                                             </small>
                                         </a>

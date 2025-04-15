@@ -223,7 +223,10 @@
                                                 <div class="form-check">
                                                     <input type="checkbox" name="SelectedTagIds" value="@tag.TagId" class="form-check-input" id="tag-@tag.TagId" />
                                                     <label class="form-check-label" for="tag-@tag.TagId">
-                                                        <span class="badge bg-@GetTagColorClass(tag)">@tag.Name</span>
+                                                        @{
+                                                            string tagColor = tag.Color.ToString().ToLower();
+                                                        }
+                                                        <span class="badge bg-@tagColor">@tag.Name</span>
                                                     </label>
                                                 </div>
                                             </div>
@@ -560,8 +563,8 @@
                 1 => "secondary",
                 2 => "success",
                 3 => "danger",
-                4 => "warning", 
-                5 => "info",
+                4 => "warning",
+                5 => "purple",
                 6 => "orange",
                 7 => "dark",
                 _ => "secondary"

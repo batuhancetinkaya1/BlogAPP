@@ -83,5 +83,47 @@ namespace BlogApp.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPosts(string sort = "date", int page = 1)
+        {
+            var allPosts = await _postRepository.GetAllAsync();
+            
+            // Sadece aktif ve yayınlanmış postları göster
+            var filteredPosts = allPosts
+                .Where(p => p.IsActive && p.Status == PostStatus.Published)
+                .ToList();
+            
+            // Sıralama uygula
+            filteredPosts = sort switch
+            {
+                "title" => filteredPosts.OrderBy(p => p.Title).ToList(),
+                "likes" => filteredPosts.OrderByDescending(p => p.Reactions.Count(r => r.IsLike)).ToList(),
+                "comments" => filteredPosts.OrderByDescending(p => p.Comments.Count).ToList(),
+                _ => filteredPosts.OrderByDescending(p => p.PublishedOn).ToList()
+            };
+
+            // Pagination için ayarlar
+            int pageSize = 3; // Sayfa başına 3 post
+            var totalPosts = filteredPosts.Count;
+            var totalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
+            
+            // Geçerli sayfadaki postları al
+            var pagedPosts = filteredPosts
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var model = new PostListViewModel
+            {
+                Posts = pagedPosts,
+                CurrentPage = page,
+                TotalPages = totalPages,
+                CurrentSort = sort,
+                CurrentTag = string.Empty
+            };
+
+            return PartialView("_PostsList", model);
+        }
     }
 } 

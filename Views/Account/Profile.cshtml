@@ -1,0 +1,8 @@
+@if (User.Identity?.IsAuthenticated == true && Model.User != null && User.Identity.Name == Model.User.UserName)
+{
+    <a 
+        asp-action="Edit" 
+        asp-controller="Account" 
+        asp-route-username="@Model.User.UserName" 
+        class="btn btn-primary mb-3">Profili Düzenle</a>
+} 

@@ -1,49 +1,67 @@
-@model List<BlogApp.Entity.Tag>
+@model IEnumerable<BlogApp.Entity.Tag>
+@using BlogApp.Entity
+@{
+    Layout = null;
+}
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">Etiketler</h5>
-        <a href="/Tags" class="btn btn-sm btn-outline-primary">Tümünü Gör <i class="bi bi-arrow-right"></i></a>
+        <h5 class="card-title mb-0">Popüler Etiketler</h5>
+        <a href="/Tags/Index" class="btn btn-sm btn-outline-primary">Tümünü Gör <i class="bi bi-arrow-right"></i></a>
     </div>
     <div class="card-body">
-        <div id="tagsContainer" class="d-flex flex-wrap gap-2">
-            @foreach (var tag in Model.Take(10))
+        <div class="d-flex flex-wrap gap-2">
+            @if (Model != null && Model.Any())
             {
-                string tagColor = tag.Color?.ToString().ToLower() ?? "secondary";
-                // Info tag ve diğer açık renkli etiketler için metin rengini ayarlama
-                string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
-                <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none">@tag.Name</a>
+                foreach (var tag in Model.Take(15))
+                {
+                    var tagColor = tag.Color.ToString().ToLower();
+                    string textColorClass = "";
+                    
+                    // Add text-dark class for light-colored tags
+                    if (tagColor == "info" || tagColor == "warning" || tagColor == "light")
+                    {
+                        textColorClass = "text-dark";
+                    }
+                    
+                    <a href="/Tags/@tag.Url" class="badge bg-@tagColor @textColorClass text-decoration-none">@tag.Name</a>
+                }
             }
         </div>
-        @if (Model.Count > 10)
-        {
-            <button id="showMoreTags" class="btn btn-sm btn-link d-block mt-2">Daha Fazla Göster</button>
-            <div id="extraTags" class="d-none mt-2">
-                @foreach (var tag in Model.Skip(10))
-                {
-                    string tagColor = tag.Color?.ToString().ToLower() ?? "secondary";
-                    // Info tag ve diğer açık renkli etiketler için metin rengini ayarlama
-                    string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
-                    <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none me-1 mb-1">@tag.Name</a>
-                }
-            </div>
-        }
     </div>
 </div>
+
+<style>
+.tag-container {
+    position: relative;
+}
+
+#showMoreTags {
+    transition: all 0.3s ease;
+}
+
+#showMoreTags.expanded .bi-chevron-down {
+    transform: rotate(180deg);
+}
+</style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const showMoreButton = document.getElementById('showMoreTags');
         const extraTags = document.getElementById('extraTags');
         
-        if (showMoreButton) {
+        if (showMoreButton && extraTags) {
+            const buttonText = showMoreButton.querySelector('.button-text');
+            
             showMoreButton.addEventListener('click', function() {
                 if (extraTags.classList.contains('d-none')) {
                     extraTags.classList.remove('d-none');
-                    showMoreButton.textContent = 'Daha Az Göster';
+                    buttonText.textContent = 'Daha Az Göster';
+                    showMoreButton.classList.add('expanded');
                 } else {
                     extraTags.classList.add('d-none');
-                    showMoreButton.textContent = 'Daha Fazla Göster';
+                    buttonText.textContent = 'Daha Fazla Göster';
+                    showMoreButton.classList.remove('expanded');
                 }
             });
         }

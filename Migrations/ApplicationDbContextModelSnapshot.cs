@@ -185,7 +185,7 @@ namespace BlogApp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("Color")
+                    b.Property<int>("Color")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")

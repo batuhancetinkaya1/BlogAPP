@@ -7,7 +7,7 @@ public enum TagColors
     Success,
     Danger,
     Warning,
-    Info,
+    Purple,
     Orange,
     Dark
 } 

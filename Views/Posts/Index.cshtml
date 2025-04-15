@@ -95,34 +95,10 @@
                                                     </div>
                                                     
                                                     <div>
-                                                        @foreach (var tag in post.Tags.Take(2))
+                                                        @foreach (var tag in post.Tags)
                                                         {
-                                                            string tagColor = "secondary";
-                                                            if (tag.Color.HasValue)
-                                                            {
-                                                                switch(tag.Color.Value)
-                                                                {
-                                                                    case BlogApp.Entity.TagColors.Primary: tagColor = "primary"; break;
-                                                                    case BlogApp.Entity.TagColors.Success: tagColor = "success"; break;
-                                                                    case BlogApp.Entity.TagColors.Danger: tagColor = "danger"; break;
-                                                                    case BlogApp.Entity.TagColors.Warning: tagColor = "warning"; break;
-                                                                    case BlogApp.Entity.TagColors.Info: tagColor = "info"; break;
-                                                                    case BlogApp.Entity.TagColors.Orange: tagColor = "orange"; break;
-                                                                    case BlogApp.Entity.TagColors.Dark: tagColor = "dark"; break;
-                                                                    default: tagColor = "secondary"; break;
-                                                                }
-                                                            }
-                                                            
-                                                            string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
-                                                            
-                                                            @if (tag.Color.HasValue && tag.Color.Value == BlogApp.Entity.TagColors.Info)
-                                                            {
-                                                                <a href="/tags/@tag.Url" class="badge text-dark text-decoration-none me-1" style="background-color: #0dcaf0 !important;">@tag.Name</a>
-                                                            }
-                                                            else
-                                                            {
-                                                                <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none me-1">@tag.Name</a>
-                                                            }
+                                                            string tagColor = tag.Color.ToString().ToLower();
+                                                            <a href="/tags/@tag.Url" class="badge bg-@tagColor text-decoration-none me-1">@tag.Name</a>
                                                         }
                                                         @if (post.Tags.Count > 2)
                                                         {

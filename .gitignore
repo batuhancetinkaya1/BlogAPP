@@ -10,6 +10,9 @@
 *.userosscache
 *.sln.docstates
 
+# Project-specific files
+Dotnet notlar.txt
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

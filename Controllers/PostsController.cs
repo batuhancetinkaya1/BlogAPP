@@ -37,11 +37,10 @@ public class PostsController : Controller
         _notificationService = notificationService;
     }
 
-    public async Task<IActionResult> Index(string? tag = null, string sort = "date", int page = 1)
+    public async Task<IActionResult> Index(string sort = "date", int page = 1, string tag = "")
     {
         var posts = await _postRepository.GetAllWithDetailsAsync();
-        // Sadece yayında olan yazıları göster
-        posts = posts.Where(p => p.Status == PostStatus.Published && p.PublishedOn != null).ToList();
+        posts = posts.Where(p => p.Status == PostStatus.Published && p.PublishedOn.HasValue).ToList();
 
         if (!string.IsNullOrEmpty(tag))
         {
@@ -52,28 +51,24 @@ public class PostsController : Controller
             }
         }
 
-        // Apply sorting
         posts = sort switch
         {
-            "title" => posts.OrderBy((Post p) => p.Title).ToList(),
-            "likes" => posts.OrderByDescending((Post p) => p.Reactions.Count(r => r.IsLike)).ToList(),
-            "comments" => posts.OrderByDescending((Post p) => p.Comments.Count).ToList(),
-            _ => posts.OrderByDescending((Post p) => p.CreatedAt).ToList()
+            "title" => posts.OrderBy(p => p.Title ?? string.Empty).ToList(),
+            "likes" => posts.OrderByDescending(p => p.Reactions?.Count(r => r.IsLike) ?? 0).ToList(),
+            "comments" => posts.OrderByDescending(p => p.Comments?.Count ?? 0).ToList(),
+            _ => posts.OrderByDescending(p => p.CreatedAt).ToList()
         };
 
         int pageSize = 6;
         var pagedPosts = posts.Skip((page - 1) * pageSize)
-                          .Take(pageSize)
-                          .ToList();
-
-        var totalPosts = posts.Count;
-        var totalPages = (int)Math.Ceiling(totalPosts / (double)pageSize);
+                           .Take(pageSize)
+                           .ToList();
 
         var model = new PostListViewModel
         {
             Posts = pagedPosts,
             CurrentPage = page,
-            TotalPages = totalPages,
+            TotalPages = (int)Math.Ceiling(posts.Count / (double)pageSize),
             CurrentSort = sort,
             CurrentTag = tag
         };
@@ -163,9 +158,12 @@ public class PostsController : Controller
             }
             
             // Modeli log'a yazdır (hata ayıklama için)
-            foreach (var prop in typeof(Models.PostCreateViewModel).GetProperties())
+            if (model != null)
             {
-                Console.WriteLine($"Property {prop.Name}: {prop.GetValue(model)}");
+                foreach (var prop in typeof(Models.PostCreateViewModel).GetProperties())
+                {
+                    Console.WriteLine($"Property {prop.Name}: {prop.GetValue(model)}");
+                }
             }
             
             // ViewBag.Tags doldur
@@ -190,8 +188,15 @@ public class PostsController : Controller
                 return View(model);
             }
 
+            // Null kontrolü
+            if (model == null)
+            {
+                ModelState.AddModelError("", "Model boş - veriler eksik");
+                return View(new Models.PostCreateViewModel());
+            }
+
             // Sanitize HTML content to prevent XSS
-            model.Content = Helpers.HtmlSanitizerHelper.Sanitize(model.Content);
+            model.Content = Helpers.HtmlSanitizerHelper.Sanitize(model.Content ?? string.Empty);
             
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim?.Value == null)
@@ -208,8 +213,8 @@ public class PostsController : Controller
                 CreatedAt = DateTime.UtcNow,
                 UserId = int.Parse(userIdClaim.Value),
                 IsActive = model.IsActive,
-                VideoUrl = model.VideoUrl,
-                Keywords = model.Keywords,
+                VideoUrl = model.VideoUrl ?? string.Empty,
+                Keywords = model.Keywords ?? string.Empty,
                 ReadTime = model.ReadTime,
                 Status = model.IsDraft || action == "draft" ? PostStatus.Draft : PostStatus.Published
             };
@@ -249,7 +254,7 @@ public class PostsController : Controller
                     Directory.CreateDirectory(imageDir);
                 }
 
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                await using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
                     await model.ImageFile.CopyToAsync(fileStream);
                 }
@@ -268,6 +273,8 @@ public class PostsController : Controller
             // Etiketleri ekle
             if (model.SelectedTagIds != null && model.SelectedTagIds.Count > 0)
             {
+                post.Tags = new List<Tag>(); // Null değil boş liste olduğundan emin ol
+                
                 foreach (var tagId in model.SelectedTagIds)
                 {
                     var tag = await _tagRepository.GetByIdAsync(tagId);
@@ -276,6 +283,7 @@ public class PostsController : Controller
                         post.Tags.Add(tag);
                     }
                 }
+                
                 await _postRepository.UpdateAsync(post);
             }
             
@@ -338,105 +346,100 @@ public class PostsController : Controller
             return NotFound();
         }
 
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var existingPost = await _postRepository.GetByIdAsync(id);
+        // ViewBag'i hemen doldur ki hata durumunda view'e gönderelim
+        ViewBag.Tags = await _tagRepository.GetAllAsync();
 
-        if (existingPost == null || (existingPost.UserId != userId && !User.IsInRole("Admin")))
+        try
         {
-            return NotFound();
-        }
-
-        if (!ModelState.IsValid)
-        {
-            ViewBag.Tags = await _tagRepository.GetAllAsync();
-            return View(model);
-        }
-
-        // Sanitize HTML content to prevent XSS
-        model.Content = Helpers.HtmlSanitizerHelper.Sanitize(model.Content);
-
-        existingPost.Title = model.Title;
-        existingPost.Content = model.Content;
-        existingPost.Description = model.Description ?? "";
-        existingPost.Url = GenerateUrl(model.Title);
-        existingPost.IsActive = model.IsActive;
-        existingPost.Status = model.Status;
-
-        // Handle scheduling
-        if (model.Status == PostStatus.Scheduled && model.ScheduledPublishTime.HasValue)
-        {
-            existingPost.ScheduledPublishTime = model.ScheduledPublishTime;
-        }
-        else if (model.Status == PostStatus.Published && existingPost.Status != PostStatus.Published)
-        {
-            existingPost.PublishedOn = DateTime.UtcNow;
-        }
-
-        // Handle image upload
-        if (model.ImageFile != null && model.ImageFile.Length > 0)
-        {
-            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "posts");
-            if (!Directory.Exists(uploadsFolder))
+            if (ModelState.IsValid)
             {
-                Directory.CreateDirectory(uploadsFolder);
-            }
-
-            // Delete old image if exists and not default image
-            if (!string.IsNullOrEmpty(existingPost.Image) && !existingPost.Image.EndsWith("default.jpg"))
-            {
-                var oldImagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", existingPost.Image.TrimStart('/'));
-                if (System.IO.File.Exists(oldImagePath))
+                var post = await _postRepository.GetByIdAsync(id);
+                if (post == null)
                 {
-                    try
+                    return NotFound();
+                }
+
+                // Update post properties
+                post.Title = model.Title ?? string.Empty;
+                post.Content = Helpers.HtmlSanitizerHelper.Sanitize(model.Content ?? string.Empty);
+                post.Description = model.Description ?? string.Empty;
+                post.Status = model.Status;
+                post.IsActive = model.IsActive;
+                
+                // Handle image upload
+                if (model.ImageFile != null)
+                {
+                    var extension = Path.GetExtension(model.ImageFile.FileName).ToLower();
+                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+                    
+                    if (!allowedExtensions.Contains(extension))
                     {
-                        System.IO.File.Delete(oldImagePath);
+                        ModelState.AddModelError("ImageFile", "Sadece .jpg, .jpeg, .png ve .webp uzantılı dosyalar yüklenebilir.");
+                        return View(model);
                     }
-                    catch (Exception ex)
+                    
+                    var fileName = $"{Guid.NewGuid()}{extension}";
+                    var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "posts", fileName);
+                    
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
                     {
-                        // Log error but continue
-                        Console.WriteLine($"Eski resim silinirken hata oluştu: {ex.Message}");
+                        await model.ImageFile.CopyToAsync(fileStream);
+                    }
+                    
+                    post.Image = $"/img/posts/{fileName}";
+                }
+
+                // Etiketleri güncelle - null kontrolü eklendi
+                model.SelectedTagIds ??= new List<int>();
+
+                // Etiketleri güncelleme
+                var currentTags = post.Tags?.ToList() ?? new List<Tag>();
+                
+                // Log etiket durumunu
+                Console.WriteLine($"Mevcut etiket sayısı: {currentTags.Count}");
+                Console.WriteLine($"Seçilen etiket sayısı: {model.SelectedTagIds.Count}");
+                
+                // Kaldırılmış etiketleri işle
+                foreach (var tag in currentTags.ToList())
+                {
+                    if (!model.SelectedTagIds.Contains(tag.TagId))
+                    {
+                        post.Tags.Remove(tag);
+                        Console.WriteLine($"Etiket kaldırıldı: {tag.Name} (ID: {tag.TagId})");
                     }
                 }
-            }
-
-            var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(model.ImageFile.FileName);
-            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
-            {
-                await model.ImageFile.CopyToAsync(fileStream);
-            }
-
-            existingPost.Image = "/img/posts/" + uniqueFileName;
-        }
-        else if (string.IsNullOrEmpty(existingPost.Image))
-        {
-            // Eğer mevcut resim yoksa ve yeni resim yüklenmediyse, varsayılan resmi kullan
-            existingPost.Image = "/img/posts/default.jpg";
-        }
-
-        // Update tags
-        if (model.SelectedTagIds != null && model.SelectedTagIds.Count > 0)
-        {
-            existingPost.Tags = new List<Tag>();
-            var allTags = await _tagRepository.GetAllAsync();
-            foreach (var tagId in model.SelectedTagIds)
-            {
-                var tag = allTags.FirstOrDefault(t => t.TagId == tagId);
-                if (tag != null)
+                
+                // Yeni etiketleri ekle
+                foreach (var tagId in model.SelectedTagIds)
                 {
-                    existingPost.Tags.Add(tag);
+                    if (!currentTags.Any(t => t.TagId == tagId))
+                    {
+                        var tag = await _tagRepository.GetByIdAsync(tagId);
+                        if (tag != null)
+                        {
+                            post.Tags.Add(tag);
+                            Console.WriteLine($"Etiket eklendi: {tag.Name} (ID: {tag.TagId})");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Etiket bulunamadı: TagId = {tagId}");
+                        }
+                    }
                 }
+
+                await _postRepository.UpdateAsync(post);
+                TempData["success"] = "Yazı başarıyla güncellendi.";
+                return RedirectToAction(nameof(Details), new { url = post.Url });
             }
         }
-        else
+        catch (Exception ex)
         {
-            existingPost.Tags = new List<Tag>();
+            Console.WriteLine($"Hata: {ex.Message}");
+            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+            ModelState.AddModelError("", $"Yazı güncellenirken bir hata oluştu: {ex.Message}");
         }
 
-        await _postRepository.UpdateAsync(existingPost);
-        TempData["success"] = "Yazı başarıyla güncellendi.";
-        return RedirectToAction(nameof(Details), new { url = existingPost.Url });
+        return View(model);
     }
 
     [Authorize]
@@ -776,8 +779,8 @@ public class PostsController : Controller
                 comment = await _commentRepository.GetByIdAsync(model.CommentId);
                 
                 // Gerçek sayıları hesapla
-                int likesCount = comment.Reactions.Count(r => r.IsLike);
-                int dislikesCount = comment.Reactions.Count(r => !r.IsLike);
+                int likesCount = comment.Reactions?.Count(r => r.IsLike) ?? 0;
+                int dislikesCount = comment.Reactions?.Count(r => !r.IsLike) ?? 0;
                 
                 Console.WriteLine($"AddCommentReaction: İşlem tamamlandı - Beğeni: {likesCount}, Beğenmeme: {dislikesCount}");
 
@@ -809,8 +812,8 @@ public class PostsController : Controller
                         await _commentRepository.UpdateAsync(comment);
                         
                         // Sayıları güncelle
-                        int likesCount = comment.Reactions.Count(r => r.IsLike);
-                        int dislikesCount = comment.Reactions.Count(r => !r.IsLike);
+                        int likesCount = comment.Reactions?.Count(r => r.IsLike) ?? 0;
+                        int dislikesCount = comment.Reactions?.Count(r => !r.IsLike) ?? 0;
                         
                         return Json(new { 
                             success = true, 
@@ -901,8 +904,8 @@ public class PostsController : Controller
         post = await _postRepository.GetByIdAsync(model.PostId);
         
         // Gerçek sayıları hesapla
-        int likesCount = post.Reactions.Count(r => r.IsLike);
-        int dislikesCount = post.Reactions.Count(r => !r.IsLike);
+        int likesCount = post.Reactions?.Count(r => r.IsLike) ?? 0;
+        int dislikesCount = post.Reactions?.Count(r => !r.IsLike) ?? 0;
         
         Console.WriteLine($"AddReaction: İşlem tamamlandı - Beğeni: {likesCount}, Beğenmeme: {dislikesCount}");
 

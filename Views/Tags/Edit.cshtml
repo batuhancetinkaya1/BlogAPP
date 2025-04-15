@@ -26,8 +26,16 @@
                 </div>
                 <div class="form-group mb-3">
                     <label asp-for="Color" class="control-label"></label>
-                    <select asp-for="Color" class="form-select" asp-items="Html.GetEnumSelectList<BlogApp.Entity.TagColors>()">
+                    <select asp-for="Color" class="form-select" id="Color" required>
                         <option value="">-- Renk Seçin --</option>
+                        <option value="@TagColors.Primary">Primary</option>
+                        <option value="@TagColors.Secondary">Secondary</option>
+                        <option value="@TagColors.Success">Success</option>
+                        <option value="@TagColors.Danger">Danger</option>
+                        <option value="@TagColors.Warning">Warning</option>
+                        <option value="@TagColors.Purple">Purple</option>
+                        <option value="@TagColors.Dark">Dark</option>
+                        <option value="@TagColors.Orange">Orange</option>
                     </select>
                     <span asp-validation-for="Color" class="text-danger"></span>
                     <div class="mt-2">
@@ -36,7 +44,7 @@
                         <span class="badge bg-success p-2 me-1">Success</span>
                         <span class="badge bg-danger p-2 me-1">Danger</span>
                         <span class="badge bg-warning text-dark p-2 me-1">Warning</span>
-                        <span class="badge bg-info text-dark p-2 me-1">Info</span>
+                        <span class="badge bg-purple p-2 me-1">Purple</span>
                         <span class="badge bg-orange text-white p-2 me-1">Orange</span>
                         <span class="badge bg-dark text-white p-2 me-1">Dark</span>
                     </div>
@@ -75,29 +83,13 @@
                     colorClass = colorText;
                     
                     // Açık renkli etiketler için metin rengini ayarla
-                    if (colorClass === 'warning' || colorClass === 'info' || colorClass === 'light') {
+                    if (colorClass === 'warning' || colorClass === 'light' || colorClass === 'purple') {
                         textClass = 'text-dark';
                     }
                 }
                 
-                // Info renk kontrolü için özel koşul
-                const isInfo = (colorClass === 'info');
-                
                 // Önizleme badge sınıfını ve içeriğini güncelle
-                previewBadge.className = '';
-                
-                if (isInfo) {
-                    // Info için özel stil
-                    previewBadge.classList.add('badge', textClass);
-                    previewBadge.style.backgroundColor = '#0dcaf0';
-                    previewBadge.style.color = '#000';
-                } else {
-                    previewBadge.classList.add('badge', `bg-${colorClass}`, textClass);
-                    previewBadge.style.backgroundColor = '';
-                    previewBadge.style.color = '';
-                }
-                
-                previewBadge.classList.add('p-2');
+                previewBadge.className = 'badge bg-' + colorClass + ' ' + textClass + ' p-2';
                 previewBadge.textContent = name;
             }
             

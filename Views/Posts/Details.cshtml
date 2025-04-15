@@ -7,12 +7,12 @@
 @{
     ViewData["Title"] = Model?.Title ?? "Blog Yazısı";
     ViewData["Description"] = Model?.Description;
-    ViewData["Keywords"] = string.Join(", ", Model?.Tags.Select(t => t.Name) ?? new List<string>());
+    ViewData["Keywords"] = string.Join(", ", Model?.Tags?.Select(t => t.Name) ?? new List<string>());
     ViewData["Image"] = string.IsNullOrEmpty(Model?.Image) ? "/img/posts/default.jpg" : Model.Image;
 
     // Get current user ID if authenticated
     int? userId = null;
-    if (User.Identity!.IsAuthenticated)
+    if (User.Identity != null && User.Identity.IsAuthenticated)
     {
         string? userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!string.IsNullOrEmpty(userIdValue) && int.TryParse(userIdValue, out int parsedUserId))
@@ -27,8 +27,8 @@
     var dislikesCount = Model?.Reactions?.Count(r => !r.IsLike) ?? 0;
     
     // Kullanıcı bilgileri - düzeltilmiş
-    var authorImageUrl = string.IsNullOrEmpty(Model.User?.Image) ? "/img/profiles/default.jpg" : Model.User.Image;
-    var authorName = Model.User?.UserName ?? "Bilinmeyen Kullanıcı";
+    var authorImageUrl = Model?.User?.Image ?? "/img/profiles/default.jpg";
+    var authorName = Model?.User?.UserName ?? "Bilinmeyen Kullanıcı";
 }
 
 <div class="container">
@@ -40,46 +40,39 @@
             
             <article class="blog-post">
                 <header class="mb-4">
-                    <h1 class="display-4 mb-3">@Model.Title</h1>
+                    <h1 class="display-4 mb-3">@(Model?.Title ?? "Yazı yüklenemedi")</h1>
                     
                     <!-- Author information -->
-                    <div class="d-flex align-items-center text-muted mb-3">
-                        <img src="@authorImageUrl" 
-                             class="rounded-circle me-2" 
-                             style="width: 40px; height: 40px; object-fit: cover;" 
-                             alt="@authorName">
-                        <div>
+                    <div class="post-meta">
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="@authorImageUrl" alt="@authorName" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
                             <div>
-                                <a href="/users/@authorName" class="text-decoration-none">
-                                    @authorName
-                                    @if (Model.User?.IsAdmin == true)
-                                    {
-                                        <i class="bi bi-patch-check-fill text-primary" title="Admin"></i>
-                                    }
-                                </a>
+                                <h6 class="mb-0">
+                                    <a href="/users/@(Model?.User?.UserName ?? "#")" class="text-decoration-none">@authorName</a>
+                                </h6>
+                                <small class="text-muted">@(Model?.CreatedAt.ToString("dd MMM yyyy") ?? "Tarih yok")</small>
                             </div>
-                            <small>@Model.CreatedAt.ToString("dd MMMM yyyy")</small>
                         </div>
                     </div>
                     
                     <!-- Post image -->
-                    @if (!string.IsNullOrEmpty(Model.Image))
+                    @if (!string.IsNullOrEmpty(Model?.Image))
                     {
                         <img src="@Model.Image" class="img-fluid rounded mb-4" alt="@Model.Title">
                     }
                     else
                     {
-                        <img src="/img/posts/default.jpg" class="img-fluid rounded mb-4" alt="@Model.Title">
+                        <img src="/img/posts/default.jpg" class="img-fluid rounded mb-4" alt="Blog görseli">
                     }
                 </header>
 
                 <!-- Post content -->
                 <div class="blog-content mb-4">
-                    @Html.Raw(HtmlSanitizerHelper.Sanitize(Model.Content))
+                    @Html.Raw(HtmlSanitizerHelper.Sanitize(Model?.Content ?? ""))
                 </div>
 
                 <!-- Video section -->
-                @if (!string.IsNullOrEmpty(Model.VideoUrl))
+                @if (!string.IsNullOrEmpty(Model?.VideoUrl))
                 {
                     <div class="blog-video mb-4">
                         <div class="ratio ratio-16x9">
@@ -87,7 +80,7 @@
                                 var videoId = "";
                                 var videoUrlRegex = new System.Text.RegularExpressions.Regex(
                                     @"(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})");
-                                var match = videoUrlRegex.Match(Model.VideoUrl);
+                                var match = videoUrlRegex.Match(Model.VideoUrl ?? "");
                                 
                                 if (match.Success)
                                 {
@@ -107,146 +100,152 @@
 
                 <!-- Tags section -->
                 <div class="blog-tags mb-4">
-                    @foreach (var tag in Model.Tags)
+                    @if(Model?.Tags != null)
                     {
-                        <partial name="_Tag" model="tag" />
+                        foreach (var tag in Model.Tags)
+                        {
+                            <partial name="_Tag" model="tag" />
+                        }
                     }
                 </div>
 
                 <!-- Reactions section -->
                 <div class="blog-reactions mt-4 d-flex gap-2">
                     <button id="like-button" class="btn @(userReaction?.IsLike == true ? "btn-primary" : "btn-outline-primary")" 
-                            onclick="addReaction(@Model.PostId, true)">
+                            onclick="addReaction(@(Model?.PostId ?? 0), true)">
                         <i class="bi bi-hand-thumbs-up"></i> <span id="likes-count">Beğen (@likesCount)</span>
                     </button>
                     <button id="dislike-button" class="btn @(userReaction?.IsLike == false ? "btn-danger" : "btn-outline-danger")" 
-                            onclick="addReaction(@Model.PostId, false)">
+                            onclick="addReaction(@(Model?.PostId ?? 0), false)">
                         <i class="bi bi-hand-thumbs-down"></i> <span id="dislikes-count">Beğenme (@dislikesCount)</span>
                     </button>
                 </div>
 
                 <!-- Comments section -->
                 <div class="comments-section mt-5">
-                    <h4 class="mb-3">Yorumlar (<span id="comments-count">@Model.Comments.Count</span>)</h4>
+                    <h4 class="mb-3">Yorumlar (<span id="comments-count">@(Model?.Comments?.Count ?? 0)</span>)</h4>
 
                     <div id="commentsList">
-                        @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
+                        @if(Model?.Comments != null)
                         {
-                            var commentUserReaction = comment.Reactions.FirstOrDefault(r => r.UserId == userId);
-                            var commentLikes = comment.Reactions.Count(r => r.IsLike);
-                            var commentDislikes = comment.Reactions.Count(r => !r.IsLike);
-                            
-                            // Kullanıcı bilgileri - düzeltilmiş
-                            var commentUserImageUrl = string.IsNullOrEmpty(comment.User?.Image) ? "/img/profiles/default.jpg" : comment.User.Image;
-                            var commentUserName = comment.User?.UserName ?? "Bilinmeyen Kullanıcı";
-                            
-                            <div class="comment mb-3" id="comment-@comment.CommentId">
-                                <div class="d-flex">
-                                    <img src="@commentUserImageUrl" 
-                                         class="rounded-circle me-2" 
-                                         style="width: 40px; height: 40px; object-fit: cover;" 
-                                         alt="@commentUserName">
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between">
-                                            <h6 class="mb-1">
-                                                <a href="/users/@commentUserName" class="text-decoration-none">
-                                                    @commentUserName
-                                                </a>
-                                            </h6>
-                                            <small class="text-muted">@comment.CreatedAt.ToString("dd MMM yyyy HH:mm")</small>
-                                        </div>
-                                        <p class="mb-1">@comment.Content</p>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <button class="btn btn-sm @(commentUserReaction?.IsLike == true ? "btn-primary" : "btn-outline-primary")" 
-                                                    onclick="addCommentReaction(@comment.CommentId, true)">
-                                                <i class="bi bi-hand-thumbs-up"></i> 
-                                                <span class="likes-count">@commentLikes</span>
-                                            </button>
-                                            <button class="btn btn-sm @(commentUserReaction?.IsLike == false ? "btn-danger" : "btn-outline-danger")" 
-                                                    onclick="addCommentReaction(@comment.CommentId, false)">
-                                                <i class="bi bi-hand-thumbs-down"></i>
-                                                <span class="dislikes-count">@commentDislikes</span>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="showReplyForm(@comment.CommentId)">
-                                                <i class="bi bi-reply"></i> Yanıtla
-                                            </button>
-                                            @if (userId == comment.UserId)
-                                            {
-                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteComment(@comment.CommentId)">
-                                                    <i class="bi bi-trash"></i> Sil
+                            foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
+                            {
+                                var commentUserReaction = comment.Reactions?.FirstOrDefault(r => r.UserId == userId);
+                                var commentLikes = comment.Reactions?.Count(r => r.IsLike) ?? 0;
+                                var commentDislikes = comment.Reactions?.Count(r => !r.IsLike) ?? 0;
+                                
+                                // Kullanıcı bilgileri - düzeltilmiş
+                                var commentUserImageUrl = comment.User?.Image ?? "/img/profiles/default.jpg";
+                                var commentUserName = comment.User?.UserName ?? "Bilinmeyen Kullanıcı";
+                                
+                                <div class="comment mb-3" id="comment-@comment.CommentId">
+                                    <div class="d-flex">
+                                        <img src="@commentUserImageUrl" 
+                                             class="rounded-circle me-2" 
+                                             style="width: 40px; height: 40px; object-fit: cover;" 
+                                             alt="@commentUserName">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1">
+                                                    <a href="/users/@commentUserName" class="text-decoration-none">
+                                                        @commentUserName
+                                                    </a>
+                                                </h6>
+                                                <small class="text-muted">@comment.CreatedAt.ToString("dd MMM yyyy HH:mm")</small>
+                                            </div>
+                                            <p class="mb-1">@comment.Content</p>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <button class="btn btn-sm @(commentUserReaction?.IsLike == true ? "btn-primary" : "btn-outline-primary")" 
+                                                        onclick="addCommentReaction(@comment.CommentId, true)">
+                                                    <i class="bi bi-hand-thumbs-up"></i> 
+                                                    <span class="likes-count">@commentLikes</span>
                                                 </button>
-                                            }
-                                        </div>
-                                        <div id="reply-form-@comment.CommentId" class="mt-2 d-none">
-                                            <form class="reply-form">
-                                                @Html.AntiForgeryToken()
-                                                <div class="mb-2">
-                                                    <textarea id="reply-content-@comment.CommentId" name="replyContent" class="form-control" rows="2" placeholder="Yanıtınızı yazın..."></textarea>
-                                                </div>
-                                                <div class="d-flex gap-2">
-                                                    <button type="submit" class="btn btn-primary btn-sm">Yanıtla</button>
-                                                    <button type="button" class="btn btn-secondary btn-sm" onclick="hideReplyForm(@comment.CommentId)">İptal</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                        <div class="replies mt-2">
-                                            @foreach (var reply in comment.Replies.OrderBy(r => r.CreatedAt))
-                                            {
-                                                var replyUserReaction = reply.Reactions.FirstOrDefault(r => r.UserId == userId);
-                                                var replyLikes = reply.Reactions.Count(r => r.IsLike);
-                                                var replyDislikes = reply.Reactions.Count(r => !r.IsLike);
-                                                
-                                                // Kullanıcı bilgileri - düzeltilmiş
-                                                var replyUserImageUrl = string.IsNullOrEmpty(reply.User?.Image) ? "/img/profiles/default.jpg" : reply.User.Image;
-                                                var replyUserName = reply.User?.UserName ?? "Bilinmeyen Kullanıcı";
-                                                
-                                                <div class="reply ms-4 mb-2" id="comment-@reply.CommentId">
-                                                    <div class="d-flex">
-                                                        <img src="@replyUserImageUrl" 
-                                                             class="rounded-circle me-2" 
-                                                             style="width: 30px; height: 30px; object-fit: cover;" 
-                                                             alt="@replyUserName">
-                                                        <div class="flex-grow-1">
-                                                            <div class="d-flex justify-content-between">
-                                                                <h6 class="mb-1">
-                                                                    <a href="/users/@replyUserName" class="text-decoration-none">
-                                                                        @replyUserName
-                                                                    </a>
-                                                                </h6>
-                                                                <small class="text-muted">@reply.CreatedAt.ToString("dd MMM yyyy HH:mm")</small>
-                                                            </div>
-                                                            <p class="mb-1">@reply.Content</p>
-                                                            <div class="d-flex align-items-center gap-2">
-                                                                <button class="btn btn-sm @(replyUserReaction?.IsLike == true ? "btn-primary" : "btn-outline-primary")" 
-                                                                        onclick="addCommentReaction(@reply.CommentId, true)">
-                                                                    <i class="bi bi-hand-thumbs-up"></i>
-                                                                    <span class="likes-count">@replyLikes</span>
-                                                                </button>
-                                                                <button class="btn btn-sm @(replyUserReaction?.IsLike == false ? "btn-danger" : "btn-outline-danger")" 
-                                                                        onclick="addCommentReaction(@reply.CommentId, false)">
-                                                                    <i class="bi bi-hand-thumbs-down"></i>
-                                                                    <span class="dislikes-count">@replyDislikes</span>
-                                                                </button>
-                                                                @if (userId == reply.UserId)
-                                                                {
-                                                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteComment(@reply.CommentId)">
-                                                                        <i class="bi bi-trash"></i> Sil
+                                                <button class="btn btn-sm @(commentUserReaction?.IsLike == false ? "btn-danger" : "btn-outline-danger")" 
+                                                        onclick="addCommentReaction(@comment.CommentId, false)">
+                                                    <i class="bi bi-hand-thumbs-down"></i>
+                                                    <span class="dislikes-count">@commentDislikes</span>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="showReplyForm(@comment.CommentId)">
+                                                    <i class="bi bi-reply"></i> Yanıtla
+                                                </button>
+                                                @if (userId == comment.UserId)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteComment(@comment.CommentId)">
+                                                        <i class="bi bi-trash"></i> Sil
+                                                    </button>
+                                                }
+                                            </div>
+                                            <div id="reply-form-@comment.CommentId" class="mt-2 d-none">
+                                                <form class="reply-form">
+                                                    @Html.AntiForgeryToken()
+                                                    <div class="mb-2">
+                                                        <textarea id="reply-content-@comment.CommentId" name="replyContent" class="form-control" rows="2" placeholder="Yanıtınızı yazın..."></textarea>
+                                                    </div>
+                                                    <div class="d-flex gap-2">
+                                                        <button type="submit" class="btn btn-primary btn-sm">Yanıtla</button>
+                                                        <button type="button" class="btn btn-secondary btn-sm" onclick="hideReplyForm(@comment.CommentId)">İptal</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div class="replies mt-2">
+                                                @foreach (var reply in comment.Replies.OrderBy(r => r.CreatedAt))
+                                                {
+                                                    var replyUserReaction = reply.Reactions.FirstOrDefault(r => r.UserId == userId);
+                                                    var replyLikes = reply.Reactions.Count(r => r.IsLike);
+                                                    var replyDislikes = reply.Reactions.Count(r => !r.IsLike);
+                                                    
+                                                    // Kullanıcı bilgileri - düzeltilmiş
+                                                    var replyUserImageUrl = string.IsNullOrEmpty(reply.User?.Image) ? "/img/profiles/default.jpg" : reply.User.Image;
+                                                    var replyUserName = reply.User?.UserName ?? "Bilinmeyen Kullanıcı";
+                                                    
+                                                    <div class="reply ms-4 mb-2" id="comment-@reply.CommentId">
+                                                        <div class="d-flex">
+                                                            <img src="@replyUserImageUrl" 
+                                                                 class="rounded-circle me-2" 
+                                                                 style="width: 30px; height: 30px; object-fit: cover;" 
+                                                                 alt="@replyUserName">
+                                                            <div class="flex-grow-1">
+                                                                <div class="d-flex justify-content-between">
+                                                                    <h6 class="mb-1">
+                                                                        <a href="/users/@replyUserName" class="text-decoration-none">
+                                                                            @replyUserName
+                                                                        </a>
+                                                                    </h6>
+                                                                    <small class="text-muted">@reply.CreatedAt.ToString("dd MMM yyyy HH:mm")</small>
+                                                                </div>
+                                                                <p class="mb-1">@reply.Content</p>
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <button class="btn btn-sm @(replyUserReaction?.IsLike == true ? "btn-primary" : "btn-outline-primary")" 
+                                                                            onclick="addCommentReaction(@reply.CommentId, true)">
+                                                                        <i class="bi bi-hand-thumbs-up"></i>
+                                                                        <span class="likes-count">@replyLikes</span>
                                                                     </button>
-                                                                }
+                                                                    <button class="btn btn-sm @(replyUserReaction?.IsLike == false ? "btn-danger" : "btn-outline-danger")" 
+                                                                            onclick="addCommentReaction(@reply.CommentId, false)">
+                                                                        <i class="bi bi-hand-thumbs-down"></i>
+                                                                        <span class="dislikes-count">@replyDislikes</span>
+                                                                    </button>
+                                                                    @if (userId == reply.UserId)
+                                                                    {
+                                                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteComment(@reply.CommentId)">
+                                                                            <i class="bi bi-trash"></i> Sil
+                                                                        </button>
+                                                                    }
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            }
+                                                }
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            }
                         }
                     </div>
 
                     <!-- Add comment form -->
-                    @if (User.Identity.IsAuthenticated)
+                    @if (User.Identity != null && User.Identity.IsAuthenticated)
                     {
                         <div class="add-comment mt-4">
                             <h4 class="mb-3">Yorum Ekle</h4>
@@ -593,7 +592,7 @@
                     'X-CSRF-TOKEN': token
                 },
                 body: JSON.stringify({
-                    postId: @Model.PostId,
+                    postId: @(Model?.PostId ?? 0),
                     content: content.trim()
                 })
             })
@@ -726,7 +725,7 @@
                     'X-CSRF-TOKEN': token
                 },
                 body: JSON.stringify({
-                    postId: @Model.PostId,
+                    postId: @(Model?.PostId ?? 0),
                     content: content.trim(),
                     parentCommentId: parseInt(commentId)
                 })

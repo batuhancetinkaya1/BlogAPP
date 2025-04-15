@@ -16,7 +16,7 @@
             <dd class="col-sm-10">@Html.DisplayFor(model => model.Url)</dd>
             <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Color)</dt>
             <dd class="col-sm-10">
-                <span class="badge bg-@Model.Color?.ToString().ToLower()">@Model.Name</span>
+                <span class="badge bg-@Model.Color.ToString().ToLower()">@Model.Name</span>
             </dd>
         </dl>
         <form asp-action="Delete">

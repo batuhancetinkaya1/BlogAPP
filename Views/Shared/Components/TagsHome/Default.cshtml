@@ -2,26 +2,16 @@
 
 @foreach (var tag in Model)
 {
-    string tagColor = tag.Color?.ToString().ToLower() ?? "secondary";
-    // Açık renkler için metin rengini değiştirme
-    string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
-    bool isSpecialTag = tag.Name == "Entity Framework" || tag.Name == "CSS" || tag.Name == "React";
-    string specialClass = "";
+    string tagColor = tag.Color.ToString().ToLower();
+    string textColorClass = "";
     
-    if (tag.Name == "Entity Framework") specialClass = "entity-framework-tag";
-    else if (tag.Name == "CSS") specialClass = "css-tag";
-    else if (tag.Name == "React") specialClass = "react-tag";
+    // Add text-dark class for light-colored tags
+    if (tagColor == "info" || tagColor == "warning" || tagColor == "light")
+    {
+        textColorClass = "text-dark";
+    }
     
-    @if (tagColor == "info" || isSpecialTag)
-    {
-        <a href="/tags/@tag.Url" class="badge text-dark text-decoration-none p-2 fs-6 @specialClass" style="background-color: #0dcaf0 !important;">
-            <i class="bi bi-tag-fill me-1"></i>@tag.Name
-        </a>
-    }
-    else
-    {
-        <a href="/tags/@tag.Url" class="badge bg-@tagColor @textClass text-decoration-none p-2 fs-6">
-            <i class="bi bi-tag-fill me-1"></i>@tag.Name
-        </a>
-    }
+    <a href="/tags/@tag.Url" class="badge bg-@tagColor @textColorClass text-decoration-none p-2 fs-6">
+        <i class="bi bi-tag-fill me-1"></i>@tag.Name
+    </a>
 } 

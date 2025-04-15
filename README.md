@@ -14,7 +14,7 @@
   <img src="./wwwroot/img/readme/blog-app-logo.png" alt="BlogApp Logo" width="200" height="auto">
 </p>
 
-> A modern, high-performance blog platform built with ASP.NET Core MVC, featuring a rich text editor, real-time reactions, and a responsive design optimized for all devices.
+> A modern, feature-rich blog platform built with ASP.NET Core MVC, featuring a rich text editor, user authentication, tag-based categorization, and a responsive design optimized for all devices.
 
 <p align="center">
   <a href="#-key-features">Key Features</a> •
@@ -28,47 +28,48 @@
   <a href="#-license">License</a>
 </p>
 
-*This project was developed as part of the Doğuş Teknoloji Bootcamp training program, demonstrating practical implementation of modern web technologies and best practices in software development.*
+*This project was developed as part of the Doğuş Teknoloji Bootcamp training program, demonstrating practical implementation of modern web development technologies and best practices in ASP.NET Core MVC.*
 
 ## ✨ Key Features
 
 ### Core Features
-- **Robust Authentication System** - User registration, login, profile management with secure password handling via BCrypt
-- **Complete Blog Ecosystem** - Create, edit, publish, archive, and delete blog posts with rich media support
-- **Interactive Comments & Reactions** - AJAX-powered comment threads and like/dislike system
-- **Tag-based Organization** - Customizable color-coded tags for content categorization
-- **Responsive Design** - Seamless experience across desktops, tablets, and mobile devices
+- **Authentication System** - User registration, login, profile management with secure authentication
+- **Blog Management** - Create, edit, publish, archive, and delete blog posts with media support
+- **Interactive Comments** - AJAX-powered comment system
+- **Tag-based Organization** - Color-coded tags for content categorization
+- **Responsive Design** - Seamless experience across all devices
 
 ### Admin Features
-- **Comprehensive Dashboard** - Real-time statistics and activity monitoring
-- **User Management** - Full CRUD operations with role assignment (Admin, User)
-- **Content Moderation** - Post and comment approval, editing, and removal capabilities
-- **Tag Management** - Create, edit, and delete tags with custom color assignments
+- **Content Management** - Post approval, editing, and moderation capabilities
+- **User Management** - Manage user accounts and permissions
+- **Tag Management** - Create, edit, and customize tag categories
+
+### Planned Enhancements
+- **Editor Improvements** - More robust text editing capabilities, better media handling
+- **LaTeX Support** - For mathematical equation rendering
+- **Character Count** - Live word/character count during content creation
+- **Content Limits** - Configurable character limits for titles and descriptions
+- **Modern Editor UI** - Enhanced editor interface with better formatting controls
 
 ## 🛠️ Technology Stack
 
 ### Backend
-- **ASP.NET Core MVC 7.0** - Modern, high-performance web framework
-- **Entity Framework Core** - ORM for database operations with code-first approach
-- **SQLite** - Lightweight, file-based database for easy deployment
-- **Identity System** - Custom authentication implementation with cookie-based auth
+- **ASP.NET Core MVC 7.0** - Modern web framework
+- **Entity Framework Core** - ORM for database operations
+- **SQLite** - Lightweight database for data storage
+- **Identity System** - Authentication implementation
 
 ### Frontend
-- **Bootstrap 5.3** - Responsive UI components and grid system
+- **Bootstrap 5.3** - Responsive UI components
 - **jQuery** - DOM manipulation and AJAX requests
-- **JavaScript** - Enhanced interactivity and client-side validation
-- **HTML5 & CSS3** - Modern web standards
+- **CKEditor** - Rich text editing capabilities
+- **JavaScript** - Enhanced client-side functionality
 
 ### Security
-- **BCrypt.NET** - Industry-standard password hashing
-- **HtmlSanitizer** - XSS protection for user-generated content
-- **CSRF Protection** - Built-in anti-forgery tokens
+- **CSRF Protection** - Anti-forgery tokens
 - **Input Validation** - Server-side and client-side validation
-
-### Development Tools
-- **Visual Studio / VS Code** - Development environments
-- **Git** - Version control
-- **NuGet** - Package management
+- **Content Sanitization** - HTML sanitization for user input
+- **Authentication** - Secure cookie-based authentication
 
 ## 🏗 Architecture
 
@@ -131,18 +132,6 @@ BlogApp/
 5. **Access the application:**
    Navigate to `https://localhost:5001` or `http://localhost:5000` in your browser.
 
-### Docker Deployment (Alternative)
-
-```bash
-# Build the Docker image
-docker build -t blogapp:latest .
-
-# Run the container
-docker run -d -p 8080:80 --name blogapp-container blogapp:latest
-
-# Access at http://localhost:8080
-```
-
 ### Default Credentials
 
 After initialization, the following accounts will be available:
@@ -150,7 +139,7 @@ After initialization, the following accounts will be available:
 | Role  | Email              | Password  | Capabilities                         |
 |-------|--------------------|-----------|------------------------------------|
 | Admin | admin@example.com  | admin123  | Full access to all features         |
-| User  | user@example.com   | user123   | Create/edit posts, comment, react   |
+| User  | user@example.com   | user123   | Create/edit posts, comment          |
 
 ## 📸 Screenshots
 
@@ -168,112 +157,43 @@ After initialization, the following accounts will be available:
 
 BlogApp implements multiple layers of security:
 
-- **Sanitized User Content** - All user inputs are sanitized to prevent XSS attacks
+- **Sanitized User Content** - Input sanitization to prevent XSS attacks
 - **CSRF Protection** - All forms include anti-forgery tokens
-- **Secure Password Storage** - BCrypt hashing with salt for passwords
-- **Authorization Policies** - Role-based and resource-based authorization
+- **Secure Authentication** - Cookie-based authentication with proper configuration
+- **Authorization Policies** - Role-based access control
+- **Input Validation** - Client and server-side validation
 - **Secure File Uploads** - Content-type validation and size restrictions
-- **SQL Injection Prevention** - Parameterized queries through Entity Framework
-- **Environment-Aware Error Handling** - Detailed errors in development, generic errors in production
 
 ## ⚡ Performance
 
 The application is optimized for performance:
 
 - **Async/Await Pattern** - Non-blocking I/O operations
-- **Entity Framework Optimizations** - AsSplitQuery for large joins, eager/lazy loading as appropriate
-- **Image Optimization** - Image resizing and compression
-- **Response Compression** - Gzip/Brotli compression for HTTP responses
-- **Caching** - In-memory caching for frequently accessed data
+- **Entity Framework Optimizations** - Efficient database queries
+- **AJAX Operations** - Smooth user experience without full page reloads
 - **Pagination** - Efficient data retrieval for large datasets
-- **Asynchronous File Operations** - Responsive handling of file uploads/downloads
+- **Responsive Design** - Fast loading on mobile devices
 
-## 🌐 API Documentation
-
-The application provides JSON endpoints for third-party integration:
-
-- `GET /api/posts` - Retrieve all published posts
-- `GET /api/posts/{id}` - Retrieve specific post by ID
-- `GET /api/tags` - Retrieve all tags
-- `POST /api/posts/reaction` - Add reaction to a post (authenticated)
-
-## 📦 Implemented Requirements
-
-### User Management
-- [x] User registration and login system
-- [x] User profile management
-- [x] Role-based authorization (Admin, User)
-- [x] Password change functionality
-- [x] Profile picture upload with validation
-
-### Post Management
-- [x] Create, edit, archive, and delete blog posts
-- [x] Rich text editor with HTML sanitization
-- [x] Post tagging system with color coding
-- [x] Featured image upload with size/type validation
-- [x] Post reactions (likes/dislikes) with AJAX
-
-### Comment System
-- [x] Nested comments with replies
-- [x] Live comment reactions (likes/dislikes)
-- [x] Comment moderation for admins
-- [x] AJAX-based comment submission
-
-### Tag System
-- [x] Create and manage tags with custom colors
-- [x] Tag-based post filtering
-- [x] Tag cloud visualization
-
-### Admin Dashboard
-- [x] Statistics overview (users, posts, tags)
-- [x] Recent posts and users monitoring
-- [x] User management interface
-- [x] Post management interface
-- [x] Tag management interface
-
-## 🔮 Future Enhancements
+## 🔮 Future Improvements
 
 Planned features for future iterations:
 
-- [ ] **Social Media Integration** - Login with Google/Facebook and sharing capabilities
-- [ ] **Email Notifications** - Comment and reaction notifications for post authors
-- [ ] **Advanced Search** - Full-text search with filters and sorting options
-- [ ] **Post Scheduling** - Schedule posts for future publication
-- [ ] **Analytics** - User activity tracking and content performance metrics
-- [ ] **Multi-language Support** - Internationalization for UI elements
-- [ ] **Dark/Light Theme** - Theme toggle and user preference storage
-- [ ] **Mobile Applications** - Native apps consuming the API
-- [ ] **CI/CD Pipeline** - Automated testing and deployment
+- **Enhanced Rich Text Editor** - More robust formatting options and controls
+- **LaTeX Support** - Mathematical equation rendering
+- **Image Resizing** - Better image handling and placement
+- **Character and Word Counter** - Live count during editing
+- **Content Limits** - Character limits for titles and descriptions
+- **YouTube Embedding** - Better video embedding capabilities
+- **Modern Editor UI** - More intuitive content creation experience
+- **Dark/Light Theme** - User preference for interface theme
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please check out our [contribution guidelines](CONTRIBUTING.md) first.
-
-1. **Fork the repository**
-2. **Create a feature branch**:
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. **Commit your changes**:
-   ```bash
-   git commit -m 'Add some amazing feature'
-   ```
-4. **Push to the branch**:
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-5. **Open a Pull Request**
-
-### Code Style Guidelines
-
-- Follow the [.NET Core Coding Conventions](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/inside-a-program/coding-conventions)
-- Use asynchronous programming when dealing with I/O operations
-- Write comprehensive comments for public APIs
-- Include unit tests for new features
+Contributions are welcome! Please check out our contribution guidelines.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgements
 

@@ -19,7 +19,7 @@ namespace BlogApp.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     Name = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     Url = table.Column<string>(type: "TEXT", nullable: false),
-                    Color = table.Column<int>(type: "INTEGER", nullable: true),
+                    Color = table.Column<int>(type: "INTEGER", nullable: false),
                     IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },

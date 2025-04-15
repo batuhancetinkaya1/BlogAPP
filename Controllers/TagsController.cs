@@ -18,14 +18,16 @@ namespace BlogApp.Controllers
             _postRepository = postRepository;
         }
 
-        [Authorize(Roles = "Admin")]
+        [HttpGet]
+        [Route("Tags")]
+        [Route("Tags/Index")]
         public async Task<IActionResult> Index()
         {
             var tags = await _tagRepository.GetAllAsync();
             return View(tags);
         }
 
-        [Route("tags/{url}")]
+        [Route("Tags/{url}")]
         public async Task<IActionResult> Detail(string url)
         {
             var tag = await _tagRepository.GetByUrlAsync(url);
@@ -49,23 +51,20 @@ namespace BlogApp.Controllers
             return View(viewModel);
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
+        [HttpGet]
+        [Route("Tags/Create")]
         public IActionResult Create()
         {
             return View();
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Route("Tags/Create")]
         public async Task<IActionResult> Create(Tag tag)
         {
-            if (!tag.Color.HasValue)
-            {
-                ModelState.AddModelError("Color", "Etiket rengi seçimi zorunludur.");
-                return View(tag);
-            }
-
             if (!ModelState.IsValid)
             {
                 return View(tag);
@@ -74,6 +73,13 @@ namespace BlogApp.Controllers
             if (string.IsNullOrEmpty(tag.Url))
             {
                 tag.Url = GenerateUrl(tag.Name);
+            }
+            
+            var existingTag = await _tagRepository.GetByUrlAsync(tag.Url);
+            if (existingTag != null)
+            {
+                ModelState.AddModelError("Url", "Bu URL zaten kullanımda");
+                return View(tag);
             }
             
             await _tagRepository.AddAsync(tag);
@@ -101,12 +107,6 @@ namespace BlogApp.Controllers
             if (id != tag.TagId)
             {
                 return NotFound();
-            }
-
-            if (!tag.Color.HasValue)
-            {
-                ModelState.AddModelError("Color", "Etiket rengi seçimi zorunludur.");
-                return View(tag);
             }
 
             if (ModelState.IsValid)
@@ -160,6 +160,12 @@ namespace BlogApp.Controllers
             if (tag == null)
             {
                 return NotFound();
+            }
+
+            if (tag.Posts.Any())
+            {
+                TempData["error"] = $"Bu etiket {tag.Posts.Count} yazıda kullanılıyor. Silmeden önce yazılardan kaldırın.";
+                return RedirectToAction(nameof(Index));
             }
 
             await _tagRepository.DeleteAsync(tag);

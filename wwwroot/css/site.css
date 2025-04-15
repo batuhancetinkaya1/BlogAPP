@@ -237,6 +237,12 @@ body {
   color: #fff;
 }
 
+/* Badge color for Purple */
+.bg-purple {
+  background-color: #6f42c1;
+  color: #fff;
+}
+
 .blog-post-title {
   margin-bottom: 0.25rem;
   font-size: 2.5rem;
@@ -278,4 +284,4 @@ body {
   form.d-flex {
     margin: 1rem 0;
   }
-} 
+}

@@ -35,6 +35,14 @@ namespace BlogApp.Data.Concrete.EfCore
                 .ToListAsync();
         }
 
+        public async Task<List<Tag>> GetByIdsAsync(List<int> ids)
+        {
+            return await _context.Tags
+                .Include(t => t.Posts)
+                .Where(t => ids.Contains(t.TagId))
+                .ToListAsync();
+        }
+
         public async Task AddAsync(Tag tag)
         {
             await _context.Tags.AddAsync(tag);
@@ -43,8 +51,12 @@ namespace BlogApp.Data.Concrete.EfCore
 
         public async Task UpdateAsync(Tag tag)
         {
-            _context.Tags.Update(tag);
-            await _context.SaveChangesAsync();
+            var existingTag = await _context.Tags.FindAsync(tag.TagId);
+            if (existingTag != null)
+            {
+                _context.Entry(existingTag).CurrentValues.SetValues(tag);
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task DeleteAsync(Tag tag)

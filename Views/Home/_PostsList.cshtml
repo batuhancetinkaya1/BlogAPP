@@ -1,0 +1,99 @@
+@model BlogApp.Models.ViewModels.PostListViewModel
+@using BlogApp.Entity
+@using BlogApp.Helpers
+
+@if (Model.Posts.Any())
+{
+    <div class="row row-cols-1 g-4">
+        @foreach (var post in Model.Posts)
+        {
+            <div class="col">
+                <div class="card shadow-sm h-100">
+                    <div class="row g-0">
+                        <div class="col-md-4">
+                            <img src="@(string.IsNullOrEmpty(post.Image) ? "/img/posts/default.jpg" : post.Image)" 
+                                class="img-fluid rounded-start h-100" alt="@post.Title" 
+                                style="object-fit: cover; width: 100%; height: 100%; min-height: 200px; margin-bottom: 2px;">
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card-body d-flex flex-column h-100">
+                                <h3 class="card-title h5">
+                                    <a href="/posts/@post.Url" class="text-decoration-none">@post.Title</a>
+                                </h3>
+                                
+                                @if (!string.IsNullOrEmpty(post.Description))
+                                {
+                                    <p class="card-text">@(post.Description.Length > 150 ? post.Description.Substring(0, 150) + "..." : post.Description)</p>
+                                }
+                                
+                                <div class="mt-auto">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <img src="@ImageHelper.GetProfileImageUrl(post.User?.Image)" 
+                                                class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;" 
+                                                alt="@post.User?.UserName">
+                                            <a href="/users/@post.User?.UserName" class="text-muted small text-decoration-none">
+                                                @post.User?.UserName
+                                                @if (post.User?.IsAdmin == true)
+                                                {
+                                                    <i class="bi bi-patch-check-fill text-primary" title="Admin"></i>
+                                                }
+                                            </a>
+                                        </div>
+                                        <small class="text-muted">@post.PublishedOn?.ToString("dd MMM yyyy")</small>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="text-muted small">
+                                            <i class="bi bi-hand-thumbs-up me-1"></i>@post.Reactions.Count(r => r.IsLike)
+                                            <span class="mx-1">•</span>
+                                            <i class="bi bi-chat me-1"></i>@post.Comments.Count
+                                            @if (post.ReadTime.HasValue && post.ReadTime > 0)
+                                            {
+                                                <span class="mx-1">•</span>
+                                                <i class="bi bi-clock me-1"></i>@post.ReadTime <text>dk</text>
+                                            }
+                                        </div>
+
+                                        <div>
+                                            @foreach (var tag in post.Tags)
+                                            {
+                                                string tagColor = tag.Color.ToString().ToLower();
+                                                <a href="/tags/@tag.Url" class="badge bg-@tagColor text-decoration-none me-1">@tag.Name</a>
+                                            }
+                                            @if (post.Tags.Count > 2)
+                                            {
+                                                <span class="badge bg-light text-dark">+@(post.Tags.Count - 2)</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                        <a class="page-link" href="#" data-page="@i" data-sort="@Model.CurrentSort">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}
+else
+{
+    <div class="alert alert-info">
+        Henüz blog yazısı bulunmamaktadır.
+    </div>
+} 

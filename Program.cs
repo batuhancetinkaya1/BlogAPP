@@ -9,6 +9,8 @@ using BlogApp.Entity;
 using Microsoft.AspNetCore.Antiforgery;
 using BlogApp.Middleware;
 using BlogApp.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +32,9 @@ builder.Services.AddAntiforgery(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    // Performance optimizasyonu için query splitting behavior'u ayarla
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.MultipleCollectionIncludeWarning));
+    
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
@@ -162,6 +167,36 @@ app.MapControllerRoute(
     defaults: new { controller = "Users", action = "Profile" });
 
 app.MapControllerRoute(
+    name: "tags_create",
+    pattern: "tags/create",
+    defaults: new { controller = "Tags", action = "Create" });
+
+app.MapControllerRoute(
+    name: "tags_edit",
+    pattern: "tags/edit/{id:int}",
+    defaults: new { controller = "Tags", action = "Edit" });
+
+app.MapControllerRoute(
+    name: "tags_delete",
+    pattern: "tags/delete/{id:int}",
+    defaults: new { controller = "Tags", action = "Delete" });
+
+app.MapControllerRoute(
+    name: "tags_detail",
+    pattern: "tags/{url}",
+    defaults: new { controller = "Tags", action = "Detail" });
+
+app.MapControllerRoute(
+    name: "tags_list",
+    pattern: "Tags",
+    defaults: new { controller = "Tags", action = "Index" });
+
+app.MapControllerRoute(
+    name: "tags_index",
+    pattern: "tags/index",
+    defaults: new { controller = "Tags", action = "Index" });
+
+app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
@@ -184,11 +219,6 @@ app.MapControllerRoute(
     name: "comment_reactions",
     pattern: "Posts/AddCommentReaction",
     defaults: new { controller = "Posts", action = "AddCommentReaction" });
-
-app.MapControllerRoute(
-    name: "tags",
-    pattern: "tags/{url}",
-    defaults: new { controller = "Tags", action = "Detail" });
 
 app.MapControllerRoute(
     name: "users_login",

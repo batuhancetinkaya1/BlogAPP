@@ -10,23 +10,31 @@
     <hr />
     <div class="row">
         <div class="col-md-6">
-            <form asp-action="Create">
+            <form asp-action="Create" method="post">
                 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                 <div class="form-group mb-3">
-                    <label asp-for="Name" class="control-label"></label>
+                    <label asp-for="Name"></label>
                     <input asp-for="Name" class="form-control" />
                     <span asp-validation-for="Name" class="text-danger"></span>
                 </div>
                 <div class="form-group mb-3">
-                    <label asp-for="Url" class="control-label"></label>
+                    <label asp-for="Url"></label>
                     <input asp-for="Url" class="form-control" />
                     <span asp-validation-for="Url" class="text-danger"></span>
                     <small class="form-text text-muted">Boş bırakırsanız etiket adından otomatik oluşturulacaktır.</small>
                 </div>
                 <div class="form-group mb-3">
-                    <label asp-for="Color" class="control-label"></label>
-                    <select asp-for="Color" class="form-select" asp-items="Html.GetEnumSelectList<BlogApp.Entity.TagColors>()" required>
+                    <label asp-for="Color"></label>
+                    <select asp-for="Color" class="form-select" id="Color" required>
                         <option value="">-- Renk Seçin --</option>
+                        <option value="@TagColors.Primary">Primary</option>
+                        <option value="@TagColors.Secondary">Secondary</option>
+                        <option value="@TagColors.Success">Success</option>
+                        <option value="@TagColors.Danger">Danger</option>
+                        <option value="@TagColors.Warning">Warning</option>
+                        <option value="@TagColors.Purple">Purple</option>
+                        <option value="@TagColors.Dark">Dark</option>
+                        <option value="@TagColors.Orange">Orange</option>
                     </select>
                     <span asp-validation-for="Color" class="text-danger"></span>
                     <div class="mt-2">
@@ -35,13 +43,13 @@
                         <span class="badge bg-success p-2 me-1">Success</span>
                         <span class="badge bg-danger p-2 me-1">Danger</span>
                         <span class="badge bg-warning text-dark p-2 me-1">Warning</span>
-                        <span class="badge bg-info text-dark p-2 me-1">Info</span>
+                        <span class="badge bg-purple p-2 me-1">Purple</span>
                         <span class="badge bg-orange text-white p-2 me-1">Orange</span>
                         <span class="badge bg-dark text-white p-2 me-1">Dark</span>
                     </div>
                 </div>
                 <div id="tagPreview" class="form-group mb-3">
-                    <label class="control-label">Önizleme</label>
+                    <label>Önizleme</label>
                     <div>
                         <span id="previewBadge" class="badge bg-secondary p-2">Etiket Önizleme</span>
                     </div>
@@ -73,37 +81,36 @@
                     const colorText = colorSelect.options[colorSelect.selectedIndex].text.toLowerCase();
                     colorClass = colorText;
                     
-                    // Açık renkli etiketler için metin rengini ayarla
-                    if (colorClass === 'warning' || colorClass === 'info' || colorClass === 'light') {
+                    if (colorClass === 'warning' || colorClass === 'light' || colorClass === 'info') {
                         textClass = 'text-dark';
                     }
                 }
                 
-                // Info renk kontrolü için özel koşul
-                const isInfo = (colorClass === 'info');
-                
-                // Önizleme badge sınıfını ve içeriğini güncelle
-                previewBadge.className = '';
-                
-                if (isInfo) {
-                    // Info için özel stil
-                    previewBadge.classList.add('badge', textClass);
-                    previewBadge.style.backgroundColor = '#0dcaf0';
-                    previewBadge.style.color = '#000';
-                } else {
-                    previewBadge.classList.add('badge', `bg-${colorClass}`, textClass);
-                    previewBadge.style.backgroundColor = '';
-                    previewBadge.style.color = '';
-                }
-                
-                previewBadge.classList.add('p-2');
+                previewBadge.className = `badge bg-${colorClass} ${textClass} p-2`;
                 previewBadge.textContent = name;
             }
             
             nameInput.addEventListener('input', updatePreview);
             colorSelect.addEventListener('change', updatePreview);
             
-            // İlk yükleme
+            nameInput.addEventListener('blur', function() {
+                const urlInput = document.getElementById('Url');
+                if (urlInput && !urlInput.value) {
+                    const name = this.value.toLowerCase()
+                        .replace(/ı/g, 'i')
+                        .replace(/ğ/g, 'g')
+                        .replace(/ü/g, 'u')
+                        .replace(/ş/g, 's')
+                        .replace(/ö/g, 'o')
+                        .replace(/ç/g, 'c')
+                        .replace(/İ/g, 'i')
+                        .replace(/[^a-z0-9\s-]/g, '')
+                        .replace(/\s+/g, '-')
+                        .trim();
+                    urlInput.value = name;
+                }
+            });
+            
             updatePreview();
         });
     </script>
@@ -123,9 +130,8 @@
                 2 => "success",
                 3 => "danger",
                 4 => "warning",
-                5 => "info",
-                6 => "orange", 
-                7 => "dark",
+                5 => "purple",
+                6 => "dark",
                 _ => "secondary"
             };
         }

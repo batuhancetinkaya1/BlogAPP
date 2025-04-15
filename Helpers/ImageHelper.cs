@@ -8,141 +8,114 @@ namespace BlogApp.Helpers
 {
     public static class ImageHelper
     {
-        public static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
-        public const int MaxFileSizeBytes = 2 * 1024 * 1024; // 2MB
+        public const int MaxFileSize = 2 * 1024 * 1024; // 2MB
+        public static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png" };
 
         public static string GetProfileImageUrl(string? imagePath)
         {
             if (string.IsNullOrEmpty(imagePath))
+            {
                 return "/img/profiles/default.jpg";
+            }
 
-            return imagePath.StartsWith("/") ? imagePath : $"/img/profiles/{imagePath}";
+            return imagePath.StartsWith("http") ? imagePath : imagePath;
         }
 
-        public static async Task<string> ValidateAndSaveProfileImageAsync(IFormFile file)
+        public static async Task<string> ValidateAndSaveProfileImageAsync(IFormFile imageFile)
         {
-            if (file == null)
-                throw new ImageValidationException("No file was uploaded.");
+            if (imageFile == null || imageFile.Length == 0)
+                throw new ArgumentException("Geçersiz dosya.");
 
-            // Validate file size
-            if (file.Length > MaxFileSizeBytes)
-                throw new ImageValidationException($"File size exceeds the limit of {MaxFileSizeBytes / 1024 / 1024}MB.");
+            var extension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+            if (!AllowedExtensions.Contains(extension))
+                throw new ArgumentException("Sadece JPG ve PNG dosyalarına izin verilmektedir.");
 
-            // Validate file extension
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (!Array.Exists(AllowedExtensions, ext => ext.Equals(extension)))
-                throw new ImageValidationException($"File type not allowed. Allowed types: {string.Join(", ", AllowedExtensions)}");
+            if (imageFile.Length > MaxFileSize)
+                throw new ArgumentException("Dosya boyutu 2MB'ı geçemez.");
 
-            // Create unique filename
             var fileName = $"{Guid.NewGuid()}{extension}";
-            var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "profiles");
-            
-            if (!Directory.Exists(uploadsDirectory))
-                Directory.CreateDirectory(uploadsDirectory);
+            var filePath = Path.Combine("wwwroot", "img", "profiles", fileName);
 
-            var filePath = Path.Combine(uploadsDirectory, fileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
-            // Save file asynchronously
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(fileStream);
+                await imageFile.CopyToAsync(stream);
             }
 
             return $"/img/profiles/{fileName}";
         }
 
-        public static async Task<string> ValidateAndSavePostImageAsync(IFormFile file)
+        public static async Task<string> ValidateAndSavePostImageAsync(IFormFile imageFile)
         {
-            if (file == null)
-                throw new ImageValidationException("No file was uploaded.");
+            if (imageFile == null || imageFile.Length == 0)
+                throw new ArgumentException("Geçersiz dosya.");
 
-            // Validate file size
-            if (file.Length > MaxFileSizeBytes)
-                throw new ImageValidationException($"File size exceeds the limit of {MaxFileSizeBytes / 1024 / 1024}MB.");
+            var extension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+            if (!AllowedExtensions.Contains(extension))
+                throw new ArgumentException("Sadece JPG ve PNG dosyalarına izin verilmektedir.");
 
-            // Validate file extension
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (!Array.Exists(AllowedExtensions, ext => ext.Equals(extension)))
-                throw new ImageValidationException($"File type not allowed. Allowed types: {string.Join(", ", AllowedExtensions)}");
+            if (imageFile.Length > MaxFileSize)
+                throw new ArgumentException("Dosya boyutu 2MB'ı geçemez.");
 
-            // Create unique filename
             var fileName = $"{Guid.NewGuid()}{extension}";
-            var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "posts");
-            
-            if (!Directory.Exists(uploadsDirectory))
-                Directory.CreateDirectory(uploadsDirectory);
+            var filePath = Path.Combine("wwwroot", "img", "posts", fileName);
 
-            var filePath = Path.Combine(uploadsDirectory, fileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
-            // Save file asynchronously
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(fileStream);
+                await imageFile.CopyToAsync(stream);
             }
 
             return $"/img/posts/{fileName}";
         }
 
-        public static async Task<string> ValidateAndSaveContentImageAsync(IFormFile file)
+        public static async Task<string> ValidateAndSaveContentImageAsync(IFormFile imageFile)
         {
-            if (file == null)
-                throw new ImageValidationException("No file was uploaded.");
+            if (imageFile == null || imageFile.Length == 0)
+                throw new ArgumentException("Geçersiz dosya.");
 
-            // Validate file size
-            if (file.Length > MaxFileSizeBytes)
-                throw new ImageValidationException($"File size exceeds the limit of {MaxFileSizeBytes / 1024 / 1024}MB.");
+            var extension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+            if (!AllowedExtensions.Contains(extension))
+                throw new ArgumentException("Sadece JPG ve PNG dosyalarına izin verilmektedir.");
 
-            // Validate file extension
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (!Array.Exists(AllowedExtensions, ext => ext.Equals(extension)))
-                throw new ImageValidationException($"File type not allowed. Allowed types: {string.Join(", ", AllowedExtensions)}");
+            if (imageFile.Length > MaxFileSize)
+                throw new ArgumentException("Dosya boyutu 2MB'ı geçemez.");
 
-            // Create unique filename
             var fileName = $"{Guid.NewGuid()}{extension}";
-            var uploadsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "img", "content");
-            
-            if (!Directory.Exists(uploadsDirectory))
-                Directory.CreateDirectory(uploadsDirectory);
+            var filePath = Path.Combine("wwwroot", "img", "content", fileName);
 
-            var filePath = Path.Combine(uploadsDirectory, fileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
-            // Save file asynchronously
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(fileStream);
+                await imageFile.CopyToAsync(stream);
             }
 
             return $"/img/content/{fileName}";
         }
 
-        public static async Task<bool> DeleteImageFileAsync(string imagePath)
+        public static async Task<bool> DeleteImageFileAsync(string? imagePath)
         {
-            if (string.IsNullOrEmpty(imagePath) || imagePath.Contains("default.jpg"))
+            if (string.IsNullOrEmpty(imagePath) || imagePath.StartsWith("http"))
                 return false;
 
             try
             {
-                var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", imagePath.TrimStart('/'));
-                if (File.Exists(fullPath))
+                var filePath = Path.Combine("wwwroot", imagePath.TrimStart('/'));
+                if (File.Exists(filePath))
                 {
-                    await Task.Run(() => File.Delete(fullPath));
+                    await Task.Run(() => File.Delete(filePath));
                     return true;
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"Error deleting image: {ex.Message}");
-                // Consider using a proper logging mechanism instead of Console.WriteLine
+                // Log error if needed
             }
 
             return false;
-        }
-        
-        // Keep the synchronous method for backward compatibility but mark it as obsolete
-        [Obsolete("Use DeleteImageFileAsync instead")]
-        public static bool DeleteImageFile(string imagePath)
-        {
-            return DeleteImageFileAsync(imagePath).GetAwaiter().GetResult();
         }
     }
 

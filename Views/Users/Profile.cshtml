@@ -42,12 +42,12 @@
             <div class="col-md-4 mb-4">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="@(Model.User.Image != null ? ImageHelper.GetProfileImageUrl(Model.User.Image) : "/img/profiles/default.jpg")" 
+                        <img src="@(string.IsNullOrEmpty(Model.User.Image) ? "/img/profiles/default.jpg" : Model.User.Image)" 
                              alt="@Model.User.UserName" 
                              class="rounded-circle mb-3" 
                              style="width: 150px; height: 150px; object-fit: cover;">
                         <h4 class="card-title">@Model.User.UserName</h4>
-                        <p class="text-muted">@Model.User.Email</p>
+                        <p class="text-muted">@(Model.User.Email ?? "No email")</p>
                         @if (Model.User.IsAdmin)
                         {
                             <div class="mb-3">
@@ -102,53 +102,47 @@
 
                         <div class="tab-content">
                             <div class="tab-pane fade show active" id="posts">
-                                @if (Model?.Posts?.Any() == true)
+                                @if (Model?.Posts != null && Model.Posts.Any())
                                 {
-                                    foreach (var post in Model.Posts.OrderByDescending(p => p.CreatedAt))
-                                    {
-                                        <div class="card mb-3" id="post-@post.PostId">
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <h5 class="card-title">
-                                                        <a href="/posts/@post.Url" class="text-decoration-none">@post.Title</a>
-                                                    </h5>
-                                                    @{
-                                                        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
-                                                        var isPostOwner = userId == post.UserId.ToString();
-                                                        var isAdmin = User.IsInRole("Admin");
-                                                    }
-                                                    @if (isPostOwner || isAdmin)
-                                                    {
-                                                        <div class="btn-group">
-                                                            <a href="/Posts/Edit/@post.PostId" class="btn btn-sm btn-outline-primary">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </a>
-                                                            <button class="btn btn-sm btn-outline-danger" onclick="deletePost(@post.PostId)">
-                                                                <i class="bi bi-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    }
-                                                </div>
-                                                <p class="card-text">@post.Description</p>
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <small class="text-muted">
-                                                        @post.CreatedAt.ToString("dd MMM yyyy")
-                                                    </small>
-                                                    <div>
-                                                        @foreach (var tag in post.Tags)
-                                                        {
-                                                            <partial name="_Tag" model="tag" />
-                                                        }
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Başlık</th>
+                                                    <th>Durum</th>
+                                                    <th>Tarih</th>
+                                                    <th>İşlemler</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var post in Model.Posts)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <a href="/posts/@(post?.Url ?? "#")" class="text-decoration-none">@(post?.Title ?? "Başlıksız")</a>
+                                                        </td>
+                                                        <td>@post?.Status</td>
+                                                        <td>@post?.CreatedAt.ToString("dd.MM.yyyy")</td>
+                                                        <td>
+                                                            <div class="btn-group">
+                                                                <a href="/Posts/Edit/@post?.PostId" class="btn btn-sm btn-outline-primary">
+                                                                    <i class="bi bi-pencil"></i>
+                                                                </a>
+                                                                <a href="/Posts/Delete/@post?.PostId" class="btn btn-sm btn-outline-danger">
+                                                                    <i class="bi bi-trash"></i>
+                                                                </a>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 }
                                 else
                                 {
                                     <div class="alert alert-info">
-                                        Henüz yazı paylaşılmamış.
+                                        Henüz hiç yazı yok.
                                     </div>
                                 }
                             </div>
@@ -189,14 +183,21 @@
             </div>
             <form asp-action="UpdateProfile" asp-controller="Users" method="post" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="userName" class="form-label">Kullanıcı Adı</label>
-                        <input type="text" class="form-control" id="userName" name="UserName" value="@(Model.User?.UserName ?? string.Empty)" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">E-posta</label>
-                        <input type="email" class="form-control" id="email" name="Email" value="@(Model.User?.Email ?? string.Empty)" required>
-                    </div>
+                    @if (Model?.User != null)
+                    {
+                        <div class="mb-3">
+                            <label for="userName" class="form-label">Kullanıcı Adı</label>
+                            <input type="text" class="form-control" id="userName" name="UserName" value="@Model.User.UserName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">E-posta</label>
+                            <input type="email" class="form-control" id="email" name="Email" value="@Model.User.Email" required>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">Kullanıcı bilgileri yüklenemiyor.</div>
+                    }
                     <div class="mb-3">
                         <label for="password" class="form-label">Yeni Şifre (Opsiyonel)</label>
                         <input type="password" class="form-control" id="password" name="Password" minlength="6">

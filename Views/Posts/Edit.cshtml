@@ -54,13 +54,13 @@
                                     <div class="col-md-4 mb-2">
                                         <div class="form-check">
                                             <input type="checkbox" 
-                                                   name="tagIds" 
+                                                   name="SelectedTagIds" 
                                                    value="@tag.TagId" 
                                                    class="form-check-input" 
                                                    id="tag-@tag.TagId" 
-                                                   @(Model.SelectedTagIds.Contains(tag.TagId) ? "checked" : "") />
+                                                   @(Model.SelectedTagIds?.Contains(tag.TagId) == true ? "checked" : "") />
                                             <label class="form-check-label" for="tag-@tag.TagId">
-                                                <span class="badge bg-@(tag.Color != null ? tag.Color.ToString().ToLower() : "secondary")">@tag.Name</span>
+                                                <span class="badge bg-@tag.Color.ToString().ToLower()">@tag.Name</span>
                                             </label>
                                         </div>
                                     </div>

@@ -1,99 +1,99 @@
 @model IEnumerable<BlogApp.Entity.Tag>
-
+@using BlogApp.Entity
 @{
     ViewData["Title"] = "Etiketler";
 }
 
 <div class="container">
-    <h2>@ViewData["Title"]</h2>
-    
-    @if (TempData["Message"] != null)
-    {
-        <div class="alert alert-@TempData["MessageType"] alert-dismissible fade show" role="alert">
-            @TempData["Message"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
-    
-    <p>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-tags-fill"></i> @ViewData["Title"]</h2>
         @if (User.IsInRole("Admin"))
         {
-            <a asp-action="Create" class="btn btn-primary">Yeni Etiket</a>
+            <div>
+                <a asp-action="Create" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Yeni Etiket
+                </a>
+            </div>
         }
-    </p>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>@Html.DisplayNameFor(model => model.Name)</th>
-                <th>@Html.DisplayNameFor(model => model.Url)</th>
-                <th>@Html.DisplayNameFor(model => model.Color)</th>
-                @if (User.IsInRole("Admin"))
-                {
-                    <th>İşlemler</th>
-                }
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
-                <tr>
-                    <td>@Html.DisplayFor(modelItem => item.Name)</td>
-                    <td>@Html.DisplayFor(modelItem => item.Url)</td>
-                    <td>
-                        @{
-                            string tagColor = item.Color?.ToString().ToLower() ?? "secondary";
-                            string textClass = (tagColor == "info" || tagColor == "warning") ? "text-dark" : "text-white";
-                            bool isSpecialTag = item.Name == "Entity Framework" || item.Name == "CSS" || item.Name == "React";
-                            string specialClass = "";
-                            
-                            if (item.Name == "Entity Framework") specialClass = "entity-framework-tag";
-                            else if (item.Name == "CSS") specialClass = "css-tag";
-                            else if (item.Name == "React") specialClass = "react-tag";
-                        }
-                        
-                        @if (tagColor == "info" || isSpecialTag)
-                        {
-                            <span class="badge text-dark p-2 @specialClass" style="background-color: #0dcaf0 !important;">@item.Name</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-@tagColor @textClass p-2">@item.Name</span>
-                        }
-                    </td>
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <td>
-                            <a asp-action="Edit" asp-route-id="@item.TagId" class="btn btn-warning btn-sm">Düzenle</a>
-                            <a asp-action="Delete" asp-route-id="@item.TagId" class="btn btn-danger btn-sm">Sil</a>
-                        </td>
-                    }
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+    </div>
 
-@section Scripts {
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Özel tagleri manuel olarak düzelt
-        document.querySelectorAll('span.badge').forEach(function(badge) {
-            if (badge.textContent.includes('Entity Framework') || 
-                badge.textContent.includes('CSS') || 
-                badge.textContent.includes('React')) {
-                
-                badge.style.backgroundColor = '#0dcaf0';
-                badge.style.color = '#000';
-                badge.classList.add('text-dark');
-                badge.classList.remove('bg-secondary', 'text-white');
-            }
-            
-            // Info renkli badgelar için ek güvence
-            if (badge.classList.contains('bg-info')) {
-                badge.style.backgroundColor = '#0dcaf0 !important';
-                badge.style.color = '#000 !important';
-            }
-        });
-    });
-</script>
-} 
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    @if (!Model.Any())
+                    {
+                        <div class="alert alert-info">
+                            Henüz hiç etiket oluşturulmadı.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>İsim</th>
+                                        <th>URL</th>
+                                        @if (User.IsInRole("Admin"))
+                                        {
+                                            <th>Renk</th>
+                                        }
+                                        <th>Kullanım</th>
+                                        @if (User.IsInRole("Admin"))
+                                        {
+                                            <th>İşlemler</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model)
+                                    {
+                                        <tr>
+                                            <td>@item.TagId</td>
+                                            <td>
+                                                @{
+                                                    string tagColor = item.Color.ToString().ToLower();
+                                                }
+                                                <span class="badge bg-@tagColor p-2">@item.Name</span>
+                                            </td>
+                                            <td><code>@item.Url</code></td>
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <td>@item.Color</td>
+                                            }
+                                            <td>
+                                                @if (item.Posts != null && item.Posts.Any())
+                                                {
+                                                    <a href="/Tags/@item.Url" class="badge bg-success">@item.Posts.Count yazıda kullanılıyor</a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Kullanılmıyor</span>
+                                                }
+                                            </td>
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <a asp-action="Edit" asp-route-id="@item.TagId" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                        <a asp-action="Delete" asp-route-id="@item.TagId" class="btn btn-sm btn-outline-danger">
+                                                            <i class="bi bi-trash"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

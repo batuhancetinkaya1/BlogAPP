@@ -26,8 +26,9 @@ public class Tag
 
     public string Url { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "Etiket rengi seçimi zorunludur")]
     [Display(Name = "Etiket Rengi")]
-    public TagColors? Color { get; set; }
+    public TagColors Color { get; set; }
 
     public bool IsActive { get; set; }
 

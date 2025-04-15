@@ -42,7 +42,7 @@
             <dd class="col-sm-10">
                 @foreach (var tag in Model.Tags)
                 {
-                    <span class="badge bg-@tag.Color?.ToString().ToLower() me-1">@tag.Name</span>
+                    <span class="badge bg-@tag.Color.ToString().ToLower() me-1">@tag.Name</span>
                 }
             </dd>
         </dl>
