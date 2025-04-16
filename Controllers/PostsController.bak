@@ -12,8 +12,6 @@ using Microsoft.AspNetCore.Diagnostics;
 using System.Diagnostics;
 using BlogApp.Helpers;
 using BlogApp.Services;
-using System.Text.Json.Serialization;
-using System.Text.Json;
 
 namespace BlogApp.Controllers;
 
@@ -464,35 +462,11 @@ public class PostsController : Controller
     }
 
     [Authorize]
-    [HttpGet]
-    [Route("Posts/Delete/{id:int}")]
-    [Route("Posts/Delete/{id}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var post = await _postRepository.GetByIdAsync(id);
-
-        if (post == null)
-        {
-            return NotFound();
-        }
-
-        if (post.UserId != userId && !User.IsInRole("Admin"))
-        {
-            return Forbid();
-        }
-
-        return View(post);
-    }
-
-    [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Route("Posts/Delete/{id:int}")]
-    [Route("Posts/Delete/{id}")]
-    public async Task<IActionResult> DeleteConfirmed(int id)
+    public async Task<IActionResult> Delete(int id)
     {
-        try 
+        try
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             var post = await _postRepository.GetByIdAsync(id);
@@ -511,6 +485,17 @@ public class PostsController : Controller
                     : Forbid();
             }
 
+            // First handle any relationships that should be deleted
+            if (post.Comments != null && post.Comments.Any())
+            {
+                Console.WriteLine($"Deleting {post.Comments.Count} comments for post {post.PostId}");
+            }
+            
+            if (post.Reactions != null && post.Reactions.Any())
+            {
+                Console.WriteLine($"Deleting {post.Reactions.Count} reactions for post {post.PostId}");
+            }
+
             await _postRepository.DeleteAsync(post);
             
             // Check if request is AJAX
@@ -525,11 +510,73 @@ public class PostsController : Controller
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in DeleteConfirmed: {ex.Message}");
+            Console.WriteLine($"Error in Delete: {ex.Message}");
             
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             {
-                return Json(new { success = false, message = "Yazı silinirken bir hata oluştu." });
+                return StatusCode(500, new { success = false, message = "Yazı silinirken bir hata oluştu." });
+            }
+            
+            _notificationService.Error("Yazı silinirken bir hata oluştu.");
+            return RedirectToAction("MyPosts", "Users");
+        }
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Route("Posts/Delete/{id:int}")]
+    public async Task<IActionResult> DeleteConfirmed(int id)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var post = await _postRepository.GetByIdAsync(id);
+
+            if (post == null)
+            {
+                return Request.Headers["X-Requested-With"] == "XMLHttpRequest" 
+                    ? Json(new { success = false, message = "Yazı bulunamadı." }) 
+                    : NotFound();
+            }
+
+            if (post.UserId != userId && !User.IsInRole("Admin"))
+            {
+                return Request.Headers["X-Requested-With"] == "XMLHttpRequest" 
+                    ? Json(new { success = false, message = "Bu yazıyı silme yetkiniz yok." }) 
+                    : Forbid();
+            }
+
+            // First handle any relationships that should be deleted
+            if (post.Comments != null && post.Comments.Any())
+            {
+                Console.WriteLine($"Deleting {post.Comments.Count} comments for post {post.PostId}");
+            }
+            
+            if (post.Reactions != null && post.Reactions.Any())
+            {
+                Console.WriteLine($"Deleting {post.Reactions.Count} reactions for post {post.PostId}");
+            }
+
+            await _postRepository.DeleteAsync(post);
+            
+            // Check if request is AJAX
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = true, message = "Yazı başarıyla silindi." });
+            }
+            
+            // For direct form submissions, redirect to user's posts page
+            _notificationService.Success("Yazı başarıyla silindi.");
+            return RedirectToAction("MyPosts", "Users");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in Delete: {ex.Message}");
+            
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return StatusCode(500, new { success = false, message = "Yazı silinirken bir hata oluştu." });
             }
             
             _notificationService.Error("Yazı silinirken bir hata oluştu.");
@@ -611,45 +658,43 @@ public class PostsController : Controller
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Route("posts/bulkdelete")]
-    public async Task<IActionResult> BulkDelete()
+    public async Task<IActionResult> BulkDelete(int[] ids)
     {
-        try 
+        if (ids == null || ids.Length == 0)
         {
-            Console.WriteLine("BulkDelete endpoint called (Simplified)");
-            
-            // Request body'den direkt olarak JSON oku
-            using var reader = new StreamReader(Request.Body);
-            string body = await reader.ReadToEndAsync();
-            Console.WriteLine($"Received raw body: {body}");
-            
-            // JSON'ı manuel olarak deserialize et
-            var jsonBody = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(body);
-            
-            if (!jsonBody.TryGetProperty("ids", out var idsElement) || idsElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return BadRequest("No posts selected.");
+        }
+
+        foreach (var postId in ids)
+        {
+            var post = await _postRepository.GetByIdAsync(postId);
+            if (post != null)
             {
-                Console.WriteLine("No ids array found in request");
-                return BadRequest("No posts selected.");
-            }
-            
-            var ids = new List<int>();
-            foreach (var idElement in idsElement.EnumerateArray())
-            {
-                if (idElement.TryGetInt32(out int id))
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                if (post.UserId == userId || User.IsInRole("Admin"))
                 {
-                    ids.Add(id);
+                    await _postRepository.DeleteAsync(post);
                 }
             }
-            
-            if (ids.Count == 0)
-            {
-                Console.WriteLine("No valid ids found");
-                return BadRequest("No valid post ids provided.");
-            }
-            
-            Console.WriteLine($"Ids to delete: {string.Join(", ", ids)}");
-            
-            foreach (var postId in ids)
+        }
+
+        return Json(new { success = true });
+    }
+
+    // Modified BulkDelete method to handle JSON request properly
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BulkDelete([FromBody] BulkActionModel model)
+    {
+        if (model?.Ids == null || model.Ids.Length == 0)
+        {
+            return BadRequest("No posts selected.");
+        }
+
+        try
+        {
+            foreach (var postId in model.Ids)
             {
                 var post = await _postRepository.GetByIdAsync(postId);
                 if (post != null)
@@ -658,76 +703,66 @@ public class PostsController : Controller
                     if (post.UserId == userId || User.IsInRole("Admin"))
                     {
                         await _postRepository.DeleteAsync(post);
-                        Console.WriteLine($"Post ID {postId} deleted successfully");
                     }
-                    else
-                    {
-                        Console.WriteLine($"User {userId} does not have permission to delete Post ID {postId}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Post ID {postId} not found");
                 }
             }
 
-            return Json(new { success = true, message = $"{ids.Count} posts deleted successfully." });
+            return Json(new { success = true });
         }
         catch (Exception ex)
         {
             // Log the error
             Console.WriteLine($"Error in BulkDelete: {ex.Message}");
-            Console.WriteLine($"Exception stack trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-            }
             return StatusCode(500, new { success = false, message = "An error occurred while deleting posts." });
         }
+    }
+
+    // Class to bind the JSON request model
+    public class BulkActionModel
+    {
+        public int[] Ids { get; set; } = Array.Empty<int>();
     }
 
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Route("posts/bulkpublish")]
-    public async Task<IActionResult> BulkPublish()
+    public async Task<IActionResult> BulkPublish(int[] ids)
     {
-        try 
+        if (ids == null || ids.Length == 0)
         {
-            Console.WriteLine("BulkPublish endpoint called (Simplified)");
-            
-            // Request body'den direkt olarak JSON oku
-            using var reader = new StreamReader(Request.Body);
-            string body = await reader.ReadToEndAsync();
-            Console.WriteLine($"Received raw body: {body}");
-            
-            // JSON'ı manuel olarak deserialize et
-            var jsonBody = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(body);
-            
-            if (!jsonBody.TryGetProperty("ids", out var idsElement) || idsElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return BadRequest("No posts selected.");
+        }
+
+        foreach (var postId in ids)
+        {
+            var post = await _postRepository.GetByIdAsync(postId);
+            if (post != null)
             {
-                Console.WriteLine("No ids array found in request");
-                return BadRequest("No posts selected.");
-            }
-            
-            var ids = new List<int>();
-            foreach (var idElement in idsElement.EnumerateArray())
-            {
-                if (idElement.TryGetInt32(out int id))
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                if (post.UserId == userId || User.IsInRole("Admin"))
                 {
-                    ids.Add(id);
+                    post.CreatedAt = DateTime.UtcNow;
+                    await _postRepository.UpdateAsync(post);
                 }
             }
-            
-            if (ids.Count == 0)
-            {
-                Console.WriteLine("No valid ids found");
-                return BadRequest("No valid post ids provided.");
-            }
-            
-            Console.WriteLine($"Ids to publish: {string.Join(", ", ids)}");
-            
-            foreach (var postId in ids)
+        }
+
+        return Json(new { success = true });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BulkPublish([FromBody] BulkActionModel model)
+    {
+        if (model?.Ids == null || model.Ids.Length == 0)
+        {
+            return BadRequest("No posts selected.");
+        }
+
+        try
+        {
+            foreach (var postId in model.Ids)
             {
                 var post = await _postRepository.GetByIdAsync(postId);
                 if (post != null)
@@ -738,30 +773,16 @@ public class PostsController : Controller
                         post.Status = PostStatus.Published;
                         post.PublishedOn = DateTime.UtcNow;
                         await _postRepository.UpdateAsync(post);
-                        Console.WriteLine($"Post ID {postId} published successfully");
                     }
-                    else
-                    {
-                        Console.WriteLine($"User {userId} does not have permission to publish Post ID {postId}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Post ID {postId} not found");
                 }
             }
 
-            return Json(new { success = true, message = $"{ids.Count} posts published successfully." });
+            return Json(new { success = true });
         }
         catch (Exception ex)
         {
             // Log the error
             Console.WriteLine($"Error in BulkPublish: {ex.Message}");
-            Console.WriteLine($"Exception stack trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-            }
             return StatusCode(500, new { success = false, message = "An error occurred while publishing posts." });
         }
     }
@@ -769,45 +790,42 @@ public class PostsController : Controller
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Route("posts/bulkarchive")]
-    public async Task<IActionResult> BulkArchive()
+    public async Task<IActionResult> BulkArchive(int[] ids)
     {
-        try 
+        if (ids == null || ids.Length == 0)
         {
-            Console.WriteLine("BulkArchive endpoint called (Simplified)");
-            
-            // Request body'den direkt olarak JSON oku
-            using var reader = new StreamReader(Request.Body);
-            string body = await reader.ReadToEndAsync();
-            Console.WriteLine($"Received raw body: {body}");
-            
-            // JSON'ı manuel olarak deserialize et
-            var jsonBody = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(body);
-            
-            if (!jsonBody.TryGetProperty("ids", out var idsElement) || idsElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return BadRequest("No posts selected.");
+        }
+
+        foreach (var postId in ids)
+        {
+            var post = await _postRepository.GetByIdAsync(postId);
+            if (post != null)
             {
-                Console.WriteLine("No ids array found in request");
-                return BadRequest("No posts selected.");
-            }
-            
-            var ids = new List<int>();
-            foreach (var idElement in idsElement.EnumerateArray())
-            {
-                if (idElement.TryGetInt32(out int id))
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                if (post.UserId == userId || User.IsInRole("Admin"))
                 {
-                    ids.Add(id);
+                    await _postRepository.UpdateAsync(post);
                 }
             }
-            
-            if (ids.Count == 0)
-            {
-                Console.WriteLine("No valid ids found");
-                return BadRequest("No valid post ids provided.");
-            }
-            
-            Console.WriteLine($"Ids to archive: {string.Join(", ", ids)}");
-            
-            foreach (var postId in ids)
+        }
+
+        return Json(new { success = true });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BulkArchive([FromBody] BulkActionModel model)
+    {
+        if (model?.Ids == null || model.Ids.Length == 0)
+        {
+            return BadRequest("No posts selected.");
+        }
+
+        try
+        {
+            foreach (var postId in model.Ids)
             {
                 var post = await _postRepository.GetByIdAsync(postId);
                 if (post != null)
@@ -817,30 +835,16 @@ public class PostsController : Controller
                     {
                         post.Status = PostStatus.Archived;
                         await _postRepository.UpdateAsync(post);
-                        Console.WriteLine($"Post ID {postId} archived successfully");
                     }
-                    else
-                    {
-                        Console.WriteLine($"User {userId} does not have permission to archive Post ID {postId}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Post ID {postId} not found");
                 }
             }
 
-            return Json(new { success = true, message = $"{ids.Count} posts archived successfully." });
+            return Json(new { success = true });
         }
         catch (Exception ex)
         {
             // Log the error
             Console.WriteLine($"Error in BulkArchive: {ex.Message}");
-            Console.WriteLine($"Exception stack trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-            }
             return StatusCode(500, new { success = false, message = "An error occurred while archiving posts." });
         }
     }
@@ -1626,10 +1630,45 @@ public class PostsController : Controller
         }
     }
 
-    // Class to bind the JSON request model
-    public class BulkActionModel
+    [Authorize]
+    [HttpGet]
+    [Route("Posts/Delete/{id:int}")]
+    public async Task<IActionResult> Delete(int id)
     {
-        [JsonPropertyName("ids")]
-        public int[] Ids { get; set; } = Array.Empty<int>();
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var post = await _postRepository.GetByIdAsync(id);
+
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        if (post.UserId != userId && !User.IsInRole("Admin"))
+        {
+            return Forbid();
+        }
+
+        return View(post);
+    }
+
+    [Authorize]
+    [HttpGet]
+    [Route("Posts/Delete/{id:int}")]
+    public async Task<IActionResult> DeleteView(int id)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var post = await _postRepository.GetByIdAsync(id);
+
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        if (post.UserId != userId && !User.IsInRole("Admin"))
+        {
+            return Forbid();
+        }
+
+        return View("Delete", post);
     }
 } 

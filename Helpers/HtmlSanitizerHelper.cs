@@ -1,5 +1,6 @@
 using Ganss.Xss;
 using System;
+using System.Text.RegularExpressions;
 
 namespace BlogApp.Helpers
 {
@@ -42,6 +43,9 @@ namespace BlogApp.Helpers
             _sanitizer.AllowedTags.Add("th");
             _sanitizer.AllowedTags.Add("td");
             
+            // Add iframe for videos
+            _sanitizer.AllowedTags.Add("iframe");
+            
             // Allow necessary attributes
             _sanitizer.AllowedAttributes.Add("class");
             _sanitizer.AllowedAttributes.Add("id");
@@ -53,6 +57,13 @@ namespace BlogApp.Helpers
             _sanitizer.AllowedAttributes.Add("style");
             _sanitizer.AllowedAttributes.Add("width");
             _sanitizer.AllowedAttributes.Add("height");
+            _sanitizer.AllowedAttributes.Add("frameborder");
+            _sanitizer.AllowedAttributes.Add("allowfullscreen");
+            _sanitizer.AllowedAttributes.Add("allow");
+            _sanitizer.AllowedAttributes.Add("contenteditable");
+            _sanitizer.AllowedAttributes.Add("data-preserve-content");
+            _sanitizer.AllowedAttributes.Add("data-resizable");
+            _sanitizer.AllowedAttributes.Add("data-filename");
             
             // Allow some safe CSS properties
             _sanitizer.AllowedCssProperties.Add("color");
@@ -64,6 +75,17 @@ namespace BlogApp.Helpers
             _sanitizer.AllowedCssProperties.Add("padding");
             _sanitizer.AllowedCssProperties.Add("border");
             _sanitizer.AllowedCssProperties.Add("display");
+            _sanitizer.AllowedCssProperties.Add("position");
+            _sanitizer.AllowedCssProperties.Add("width");
+            _sanitizer.AllowedCssProperties.Add("height");
+            _sanitizer.AllowedCssProperties.Add("max-width");
+            _sanitizer.AllowedCssProperties.Add("min-height");
+            _sanitizer.AllowedCssProperties.Add("top");
+            _sanitizer.AllowedCssProperties.Add("left");
+            _sanitizer.AllowedCssProperties.Add("right");
+            _sanitizer.AllowedCssProperties.Add("bottom");
+            _sanitizer.AllowedCssProperties.Add("overflow");
+            _sanitizer.AllowedCssProperties.Add("padding-bottom");
             
             // Restrict URL schemes
             _sanitizer.AllowedSchemes.Add("http");
@@ -85,7 +107,16 @@ namespace BlogApp.Helpers
             
             try
             {
-                return _sanitizer.Sanitize(html);
+                // Temporarily protect content that should be preserved
+                html = ProtectPreservedContent(html);
+                
+                // Sanitize HTML
+                string sanitized = _sanitizer.Sanitize(html);
+                
+                // Restore protected content
+                sanitized = RestorePreservedContent(sanitized);
+                
+                return sanitized;
             }
             catch (Exception ex)
             {
@@ -95,6 +126,36 @@ namespace BlogApp.Helpers
                 // Return safe alternative
                 return HtmlEncode(html);
             }
+        }
+        
+        private static string ProtectPreservedContent(string html)
+        {
+            // Save code blocks, LaTeX formulas, etc.
+            return Regex.Replace(html, 
+                @"<(pre|code|span class=""latex-formula"")[^>]*data-preserve-content=""true""[^>]*>(.*?)<\/\1>", 
+                match => {
+                    string encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(match.Value));
+                    return $"<!--PRESERVED_CONTENT_{encoded}-->";
+                }, 
+                RegexOptions.Singleline);
+        }
+        
+        private static string RestorePreservedContent(string html)
+        {
+            // Restore code blocks, LaTeX formulas, etc.
+            return Regex.Replace(html, 
+                @"<!--PRESERVED_CONTENT_(.*?)-->", 
+                match => {
+                    try {
+                        string base64 = match.Groups[1].Value;
+                        byte[] bytes = Convert.FromBase64String(base64);
+                        return System.Text.Encoding.UTF8.GetString(bytes);
+                    }
+                    catch {
+                        return ""; // In case of decoding errors, return empty string
+                    }
+                }, 
+                RegexOptions.Singleline);
         }
         
         private static string HtmlEncode(string text)

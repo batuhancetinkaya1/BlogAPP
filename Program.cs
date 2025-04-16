@@ -15,17 +15,20 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options => {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 
 // CSRF token ayarları için AntiForgery hizmetini yapılandırma
-builder.Services.AddAntiforgery(options => 
-{
+builder.Services.AddAntiforgery(options => {
     options.HeaderName = "X-CSRF-TOKEN";
     options.SuppressXFrameOptionsHeader = false;
     options.Cookie.Name = "CSRF-TOKEN";
     options.Cookie.HttpOnly = false; // JavaScript'in tokeni okumasına izin ver
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Allow HTTP in development
+    options.Cookie.SameSite = SameSiteMode.Lax; // Less strict for better compatibility
 });
 
 // Configure DbContext
@@ -52,6 +55,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.HttpOnly = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Allow HTTP in development
+        options.Cookie.SameSite = SameSiteMode.Lax; // Less strict for better compatibility
     });
 
 // Configure Authorization
@@ -249,5 +254,20 @@ app.MapControllerRoute(
     name: "posts_search",
     pattern: "Posts/Search",
     defaults: new { controller = "Posts", action = "Search" });
+
+app.MapControllerRoute(
+    name: "posts_bulkdelete",
+    pattern: "posts/bulkdelete",
+    defaults: new { controller = "Posts", action = "BulkDelete" });
+
+app.MapControllerRoute(
+    name: "posts_bulkpublish",
+    pattern: "posts/bulkpublish",
+    defaults: new { controller = "Posts", action = "BulkPublish" });
+
+app.MapControllerRoute(
+    name: "posts_bulkarchive",
+    pattern: "posts/bulkarchive",
+    defaults: new { controller = "Posts", action = "BulkArchive" });
 
 await app.RunAsync();

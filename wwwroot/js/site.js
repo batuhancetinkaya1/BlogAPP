@@ -70,4 +70,66 @@ $(document).ready(function() {
             }
         });
     });
-}); 
+});
+
+/**
+ * Cookie utilities for handling cookies securely
+ */
+const CookieUtil = {
+    /**
+     * Set a cookie with secure attributes
+     * @param {string} name - Cookie name
+     * @param {string} value - Cookie value
+     * @param {number} days - Expiration in days
+     * @param {boolean} secure - Whether to set secure flag
+     * @param {string} sameSite - SameSite attribute (Strict, Lax, None)
+     */
+    setCookie: function(name, value, days = 7, secure = true, sameSite = 'Strict') {
+        let cookie = `${name}=${encodeURIComponent(value)}`;
+        
+        if (days) {
+            const expiry = new Date();
+            expiry.setDate(expiry.getDate() + days);
+            cookie += `; expires=${expiry.toUTCString()}`;
+        }
+        
+        cookie += '; path=/';
+        
+        if (secure) {
+            cookie += '; secure';
+        }
+        
+        cookie += `; samesite=${sameSite}`;
+        
+        document.cookie = cookie;
+    },
+    
+    /**
+     * Get a cookie value by name
+     * @param {string} name - Cookie name
+     * @returns {string|null} - Cookie value or null if not found
+     */
+    getCookie: function(name) {
+        const nameEQ = `${name}=`;
+        const cookies = document.cookie.split(';');
+        
+        for (let i = 0; i < cookies.length; i++) {
+            let cookie = cookies[i].trim();
+            if (cookie.indexOf(nameEQ) === 0) {
+                return decodeURIComponent(cookie.substring(nameEQ.length));
+            }
+        }
+        
+        return null;
+    },
+    
+    /**
+     * Delete a cookie by name
+     * @param {string} name - Cookie name
+     */
+    deleteCookie: function(name) {
+        this.setCookie(name, '', -1);
+    }
+};
+
+// Replace any direct document.cookie uses with these utility functions 

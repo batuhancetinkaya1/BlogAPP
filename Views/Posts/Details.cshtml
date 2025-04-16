@@ -78,19 +78,66 @@
                         <div class="ratio ratio-16x9">
                             @{
                                 var videoId = "";
-                                var videoUrlRegex = new System.Text.RegularExpressions.Regex(
-                                    @"(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})");
-                                var match = videoUrlRegex.Match(Model.VideoUrl ?? "");
-                                
-                                if (match.Success)
-                                {
-                                    videoId = match.Groups[1].Value;
-                                    <iframe src="https://www.youtube.com/embed/@videoId" title="YouTube video" allowfullscreen></iframe>
+                                try {
+                                    // Use a more comprehensive regex pattern
+                                    var videoUrlRegex = new System.Text.RegularExpressions.Regex(
+                                        @"(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})");
+                                    var match = videoUrlRegex.Match(Model.VideoUrl ?? "");
+                                    
+                                    if (match.Success)
+                                    {
+                                        videoId = match.Groups[1].Value;
+                                    }
+                                    else if (Model.VideoUrl?.Length == 11 && 
+                                             System.Text.RegularExpressions.Regex.IsMatch(Model.VideoUrl, @"^[a-zA-Z0-9_-]{11}$"))
+                                    {
+                                        // If the URL itself is just an 11-character video ID
+                                        videoId = Model.VideoUrl;
+                                    }
+                                    else if (Model.VideoUrl?.Contains("youtube.com") == true)
+                                    {
+                                        // Try parsing directly with URL object
+                                        try {
+                                            var uri = new Uri(Model.VideoUrl);
+                                            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                                            videoId = query["v"] ?? "";
+                                        }
+                                        catch {
+                                            // Failed to parse URL
+                                        }
+                                    }
+                                    else if (Model.VideoUrl?.Contains("youtu.be") == true)
+                                    {
+                                        // Try simple path extraction
+                                        try {
+                                            var uri = new Uri(Model.VideoUrl);
+                                            videoId = uri.AbsolutePath.TrimStart('/');
+                                        }
+                                        catch {
+                                            // Try simple string split
+                                            var parts = Model.VideoUrl?.Split('/');
+                                            if (parts != null && parts.Length > 0)
+                                            {
+                                                videoId = parts[parts.Length - 1];
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (!string.IsNullOrEmpty(videoId))
+                                    {
+                                        <iframe src="https://www.youtube.com/embed/@videoId" title="YouTube video" allowfullscreen></iframe>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-warning">
+                                            Video bağlantısı tanınamadı: @Model.VideoUrl
+                                        </div>
+                                    }
                                 }
-                                else
+                                catch (Exception ex)
                                 {
-                                    <div class="alert alert-warning">
-                                        Video bağlantısı tanınamadı: @Model.VideoUrl
+                                    <div class="alert alert-danger">
+                                        Video işlenirken hata oluştu: @ex.Message
                                     </div>
                                 }
                             }
@@ -281,7 +328,7 @@
         function addReaction(postId, isLike) {
             console.log("addReaction çağrıldı:", postId, isLike);
             
-            @if (!User.Identity.IsAuthenticated)
+            @if (!User.Identity?.IsAuthenticated == true)
             {
                 <text>
                 window.location.href = '/Users/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
@@ -367,7 +414,7 @@
         function addCommentReaction(commentId, isLike) {
             console.log("addCommentReaction çağrıldı:", commentId, isLike);
             
-            @if (!User.Identity.IsAuthenticated)
+            @if (!User.Identity?.IsAuthenticated == true)
             {
                 <text>
                 window.location.href = '/Users/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
@@ -558,7 +605,7 @@
         document.getElementById('commentForm')?.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            @if (!User.Identity.IsAuthenticated)
+            @if (!User.Identity?.IsAuthenticated == true)
             {
                 <text>
                 window.location.href = '/Users/Login';
@@ -690,7 +737,7 @@
         function replySubmitHandler(e) {
             e.preventDefault();
             
-            @if (!User.Identity.IsAuthenticated)
+            @if (!User.Identity?.IsAuthenticated == true)
             {
                 <text>
                 window.location.href = '/Users/Login';
@@ -804,4 +851,7 @@
             form.addEventListener('submit', replySubmitHandler);
         });
     </script>
+
+    <!-- MathJax script for LaTeX rendering -->
+    <script src="~/js/post-view.js"></script>
 } 

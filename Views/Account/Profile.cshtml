@@ -1,4 +1,4 @@
-@if (User.Identity?.IsAuthenticated == true && Model.User != null && User.Identity.Name == Model.User.UserName)
+@if (User.Identity?.IsAuthenticated == true && Model?.User != null && User.Identity.Name != null && User.Identity.Name == Model.User.UserName)
 {
     <a 
         asp-action="Edit" 

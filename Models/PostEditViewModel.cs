@@ -26,6 +26,15 @@ public class PostEditViewModel
 
     public string? Image { get; set; }
 
+    [Display(Name = "Video URL")]
+    public string? VideoUrl { get; set; }
+
+    [Display(Name = "Anahtar Kelimeler")]
+    public string? Keywords { get; set; }
+
+    [Display(Name = "Okuma Süresi")]
+    public int? ReadTime { get; set; }
+
     public string Url { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;

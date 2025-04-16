@@ -264,10 +264,6 @@ UpgradeLog*.htm
 ServiceFabricBackup/
 *.rptproj.bak
 
-# SQL Server files
-*.mdf
-*.ldf
-*.ndf
 
 # Business Intelligence projects
 *.rdl.data
@@ -400,18 +396,8 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
-# SQLite database files
-*.db
-*.db-shm
-*.db-wal
-
-# Application-specific settings
-appsettings.Development.json
-appsettings.Production.json
-
 # Image uploads
 wwwroot/img/uploads/
-wwwroot/img/profiles/
 
 # Logs
 logs/

@@ -15,6 +15,8 @@
                 </a>
             </div>
 
+            @Html.AntiForgeryToken()
+            
             <div class="row mb-4">
                 <div class="col-md-8">
                     <div class="input-group">
@@ -164,10 +166,30 @@
             {
                 <nav aria-label="Page navigation" class="mt-4">
                     <ul class="pagination justify-content-center">
+                        @if (ViewBag.CurrentPage > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-controller="Admin" asp-action="Posts" 
+                                   asp-route-pageNumber="@(ViewBag.CurrentPage - 1)" 
+                                   asp-route-searchTerm="@ViewBag.SearchTerm">Önceki</a>
+                            </li>
+                        }
+
                         @for (int i = 1; i <= ViewBag.TotalPages; i++)
                         {
                             <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
-                                <a class="page-link" href="/admin/posts?page=@i&searchTerm=@ViewBag.SearchTerm">@i</a>
+                                <a class="page-link" asp-controller="Admin" asp-action="Posts"
+                                   asp-route-pageNumber="@i" 
+                                   asp-route-searchTerm="@ViewBag.SearchTerm">@i</a>
+                            </li>
+                        }
+
+                        @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-controller="Admin" asp-action="Posts"
+                                   asp-route-pageNumber="@(ViewBag.CurrentPage + 1)"
+                                   asp-route-searchTerm="@ViewBag.SearchTerm">Sonraki</a>
                             </li>
                         }
                     </ul>
@@ -188,13 +210,11 @@
             <div class="modal-body">
                 <p>Bu yazıyı silmek istediğinizden emin misiniz?</p>
                 <p class="text-danger"><small>Bu işlem geri alınamaz.</small></p>
+                <input type="hidden" id="postIdToDelete">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <form asp-controller="Posts" asp-action="Delete" method="post" class="d-inline">
-                    <input type="hidden" name="id" id="postIdToDelete">
-                    <button type="submit" class="btn btn-danger">Sil</button>
-                </form>
+                <button type="button" class="btn btn-danger" onclick="ajaxDeletePost()">Sil</button>
             </div>
         </div>
     </div>
@@ -273,20 +293,41 @@
             }
 
             if (confirm(confirmMessage)) {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                
+                // Form verileri oluştur
+                const formData = new FormData();
+                selectedPosts.forEach(postId => {
+                    formData.append('ids', postId);
+                });
+                
+                console.log('Sending data for', selectedPosts.length, 'posts');
+                
+                // AJAX ile gönder
                 fetch(url, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ ids: selectedPosts })
+                    body: JSON.stringify({ ids: selectedPosts }),
+                    credentials: 'same-origin'
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.error('Server response:', text);
+                            throw new Error('Network response was not ok');
+                        });
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         window.location.reload();
                     } else {
-                        alert('İşlem sırasında bir hata oluştu.');
+                        alert(data.message || 'İşlem sırasında bir hata oluştu.');
                     }
                 })
                 .catch(error => {
@@ -334,6 +375,42 @@
             const tbody = document.querySelector('#postsTable tbody');
             visibleRows.forEach(row => {
                 tbody.appendChild(row);
+            });
+        }
+
+        function ajaxDeletePost() {
+            const postId = document.getElementById('postIdToDelete').value;
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            
+            fetch(`/posts/delete/${postId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': token
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                modal.hide();
+                
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'İşlem sırasında bir hata oluştu.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('İşlem sırasında bir hata oluştu.');
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                modal.hide();
             });
         }
     </script>

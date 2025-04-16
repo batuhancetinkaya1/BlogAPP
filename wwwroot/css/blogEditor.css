@@ -1,0 +1,486 @@
+/* 
+ * BlogEditor CSS
+ * Custom styles for the BlogApp editor
+ */
+
+/* Editor Container */
+.blog-editor-container {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+/* Editor Toolbar */
+.blog-editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    border-radius: 0.25rem 0.25rem 0 0;
+}
+
+/* Editor */
+.blog-editor {
+    width: 100%;
+    min-height: 300px;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 0.25rem 0.25rem;
+    background-color: #fff;
+    color: #212529;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.5;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    overflow-y: auto !important;
+    max-height: 600px;
+}
+
+.blog-editor:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Editor Placeholder */
+.blog-editor:empty:before {
+    content: attr(placeholder);
+    color: #6c757d;
+    opacity: 0.7;
+    cursor: text;
+}
+
+/* Dark Mode */
+.blog-editor.dark-mode {
+    background-color: #212529;
+    color: #f8f9fa;
+    border-color: #495057;
+}
+
+.blog-editor-toolbar.dark-mode {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+.blog-editor-toolbar.dark-mode .btn-light {
+    background-color: #495057;
+    color: #f8f9fa;
+    border-color: #6c757d;
+}
+
+.blog-editor-toolbar.dark-mode .btn-light:hover {
+    background-color: #6c757d;
+}
+
+/* Counter Display */
+.blog-editor-counter {
+    display: flex;
+    justify-content: flex-end;
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.blog-editor-counter.dark-mode {
+    color: #adb5bd;
+}
+
+/* Editor Content Styles */
+
+/* Headings */
+.blog-editor h1, .blog-editor h2, .blog-editor h3, 
+.blog-editor h4, .blog-editor h5, .blog-editor h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.blog-editor h1 {
+    font-size: 2.5rem;
+}
+
+.blog-editor h2 {
+    font-size: 2rem;
+}
+
+.blog-editor h3 {
+    font-size: 1.75rem;
+}
+
+.blog-editor h4 {
+    font-size: 1.5rem;
+}
+
+.blog-editor h5 {
+    font-size: 1.25rem;
+}
+
+.blog-editor h6 {
+    font-size: 1rem;
+}
+
+/* Paragraph */
+.blog-editor p {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+/* Links */
+.blog-editor a {
+    color: #0d6efd;
+    text-decoration: underline;
+}
+
+.blog-editor.dark-mode a {
+    color: #6ea8fe;
+}
+
+/* Blockquote */
+.blog-editor blockquote {
+    padding: 0.5rem 1rem;
+    margin: 0 0 1rem;
+    border-left: 0.25rem solid #dee2e6;
+    color: #6c757d;
+}
+
+.blog-editor.dark-mode blockquote {
+    border-left-color: #495057;
+    color: #adb5bd;
+}
+
+/* Code Blocks */
+.blog-editor pre {
+    display: block;
+    padding: 1rem;
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    overflow-x: auto;
+}
+
+.blog-editor.dark-mode pre {
+    background-color: #343a40;
+    color: #f8f9fa;
+}
+
+.blog-editor code {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.875em;
+    color: #d63384;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+}
+
+.blog-editor.dark-mode code {
+    color: #e685b5;
+    background-color: #343a40;
+}
+
+.blog-editor pre code {
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+    background-color: transparent;
+    border-radius: 0;
+}
+
+/* Lists */
+.blog-editor ul, .blog-editor ol {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.blog-editor ul ul, .blog-editor ol ol, 
+.blog-editor ul ol, .blog-editor ol ul {
+    margin-bottom: 0;
+}
+
+/* Table */
+.blog-editor table {
+    width: 100%;
+    margin-bottom: 1rem;
+    color: #212529;
+    border-collapse: collapse;
+}
+
+.blog-editor.dark-mode table {
+    color: #f8f9fa;
+}
+
+.blog-editor table th,
+.blog-editor table td {
+    padding: 0.75rem;
+    vertical-align: top;
+    border-top: 1px solid #dee2e6;
+}
+
+.blog-editor.dark-mode table th,
+.blog-editor.dark-mode table td {
+    border-top: 1px solid #495057;
+}
+
+.blog-editor table thead th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.blog-editor.dark-mode table thead th {
+    border-bottom: 2px solid #495057;
+}
+
+.blog-editor table tbody + tbody {
+    border-top: 2px solid #dee2e6;
+}
+
+.blog-editor.dark-mode table tbody + tbody {
+    border-top: 2px solid #495057;
+}
+
+/* Images */
+.blog-editor img {
+    max-width: 100%;
+    height: auto;
+    margin: 0.5rem 0;
+}
+
+.blog-editor img.align-left {
+    float: left;
+    margin-right: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.blog-editor img.align-right {
+    float: right;
+    margin-left: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.blog-editor img.align-center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Videos */
+.blog-editor .video-container,
+.blog-editor .blog-video {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+    margin: 1rem 0;
+    clear: both;
+}
+
+.blog-editor .video-container iframe,
+.blog-editor .video-container object,
+.blog-editor .video-container embed,
+.blog-editor .blog-video iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* LaTeX Formulas */
+.blog-editor .latex-formula {
+    display: block;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+/* Image Upload Indicator */
+.blog-editor .uploading-image {
+    border: 2px dashed #dee2e6;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    text-align: center;
+    animation: pulse 1.5s infinite;
+}
+
+.blog-editor.dark-mode .uploading-image {
+    border-color: #495057;
+    background-color: #343a40;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 0.5;
+    }
+}
+
+/* Drag and Drop Indicator */
+.blog-editor.dragover {
+    border-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.blog-editor.dark-mode.dragover {
+    border-color: #6ea8fe;
+    background-color: rgba(110, 168, 254, 0.1);
+}
+
+/* Table of Contents */
+.blog-editor .toc {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.blog-editor.dark-mode .toc {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+.blog-editor .toc ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.blog-editor .toc li {
+    margin-bottom: 0.5rem;
+}
+
+.blog-editor .toc-level-2 {
+    padding-left: 1rem;
+}
+
+.blog-editor .toc-level-3 {
+    padding-left: 2rem;
+}
+
+.blog-editor .toc-level-4 {
+    padding-left: 3rem;
+}
+
+.blog-editor .toc-level-5, .blog-editor .toc-level-6 {
+    padding-left: 4rem;
+}
+
+/* Editor Tool Button Styles */
+.editor-tool {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+}
+
+.editor-tool.active {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+.editor-tool:hover {
+    background-color: #e9ecef;
+}
+
+.editor-tool.active:hover {
+    background-color: #0b5ed7;
+}
+
+/* Character limit warnings */
+.char-limit-warning {
+    color: #fd7e14;
+}
+
+.char-limit-exceeded {
+    color: #dc3545;
+}
+
+/* Fixed Styles - Editor Bug Fixes */
+.blog-editor {
+    background-color: #fff !important;
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+}
+
+/* Ensure dark mode is disabled */
+.blog-editor.dark-mode, 
+.blog-editor-toolbar.dark-mode,
+.blog-editor-toolbar.dark-mode .btn-light,
+.blog-editor-counter.dark-mode {
+    background-color: #fff !important;
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+}
+
+.blog-editor.dark-mode a,
+.blog-editor.dark-mode code,
+.blog-editor.dark-mode blockquote,
+.blog-editor.dark-mode pre {
+    color: inherit !important;
+    background-color: #f8f9fa !important;
+}
+
+/* Fix image upload */
+.blog-editor.dragover {
+    border: 2px dashed #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+.blog-editor .uploading-image {
+    max-width: 100%;
+    height: auto;
+    opacity: 0.5;
+    border: 1px dashed #0d6efd;
+    animation: pulse 1s infinite;
+}
+
+/* Fix video container */
+.blog-editor .video-container,
+.blog-editor .blog-video {
+    margin: 1rem 0 !important;
+    position: relative;
+    width: 100% !important;
+    min-width: 50% !important;
+    clear: both;
+}
+
+.blog-editor .video-container .video-toolbar {
+    top: -40px !important;
+}
+
+/* Fix formula display */
+.blog-editor .latex-formula {
+    display: inline-block !important;
+    margin: 0 2px !important;
+    vertical-align: middle !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+}
+
+/* Fix cursor visibility */
+.blog-editor p:empty:after {
+    content: "\200B"; /* Zero-width space */
+}
+
+/* Fix buttons in toolbar */
+.blog-editor-toolbar .btn {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.875rem !important;
+    border-radius: 0.2rem !important;
+}
+
+/* Fix links in editor */
+.blog-editor a {
+    color: #0d6efd !important;
+    text-decoration: underline !important;
+    cursor: pointer !important;
+} 
