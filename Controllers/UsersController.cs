@@ -69,7 +69,7 @@ public class UsersController : Controller
             new Claim(ClaimTypes.Name, user.UserName),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User"),
-            new Claim("Image", user.Image ?? "")
+            new Claim("Image", ImageHelper.GetProfileImageUrl(user.Image))
         };
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -349,7 +349,7 @@ public class UsersController : Controller
             new Claim(ClaimTypes.Name, user.UserName),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User"),
-            new Claim("Image", user.Image ?? "")
+            new Claim("Image", ImageHelper.GetProfileImageUrl(user.Image))
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

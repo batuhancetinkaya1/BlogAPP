@@ -162,9 +162,22 @@
                             <div class="dropdown user-menu ms-3">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     @{
-                                        var userImage = User.FindFirst("Image")?.Value;
+                                        var userImage = "/img/profiles/default.jpg";
+                                        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                                        if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out var id))
+                                        {
+                                            var userRepo = Context.RequestServices.GetService<BlogApp.Data.Abstract.IUserRepository>();
+                                            if (userRepo != null)
+                                            {
+                                                var user = userRepo.GetByIdAsync(id).GetAwaiter().GetResult();
+                                                if (user != null && !string.IsNullOrEmpty(user.Image))
+                                                {
+                                                    userImage = user.Image;
+                                                }
+                                            }
+                                        }
                                     }
-                                    <img src="@ImageHelper.GetProfileImageUrl(userImage)" class="rounded-circle img-fluid" style="width: 36px; height: 36px; object-fit: cover;" alt="Profil Resmi" />
+                                    <img src="@userImage" class="rounded-circle img-fluid" style="width: 36px; height: 36px; object-fit: cover;" alt="Profil Resmi" />
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                     <li class="dropdown-header">

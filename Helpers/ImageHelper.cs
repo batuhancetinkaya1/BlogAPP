@@ -18,7 +18,8 @@ namespace BlogApp.Helpers
                 return "/img/profiles/default.jpg";
             }
 
-            return imagePath.StartsWith("http") ? imagePath : imagePath;
+            // Make sure paths starting with / are returned as-is, not with extra /
+            return imagePath.StartsWith("http") ? imagePath : (imagePath.StartsWith("/") ? imagePath : "/" + imagePath);
         }
 
         public static async Task<string> ValidateAndSaveProfileImageAsync(IFormFile imageFile)

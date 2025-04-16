@@ -205,7 +205,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 <div align="center">
-  <p>Developed with ❤️ by Bootcamp Participants</p>
-  <p>&copy; 2023 BlogApp Team</p>
+  <p>&copy; 2025 BlogApp Team</p>
 </div>
 
